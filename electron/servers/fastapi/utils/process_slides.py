@@ -59,7 +59,9 @@ async def process_slide_and_fetch_assets(
             icon_dict["__icon_url__"] = icon_result[0]
         else:
             # Fallback to FastAPI static placeholder if no icon found
-            icon_dict["__icon_url__"] = "/static/icons/placeholder.svg"
+            icon_dict["__icon_url__"] = to_frontend_asset_url(
+                "/static/icons/placeholder.svg"
+            )
         set_dict_at_path(slide.content, icon_path, icon_dict)
 
     return return_assets
@@ -172,7 +174,9 @@ async def process_old_and_new_slides_and_fetch_assets(
                 new_icon_dicts[i]["__icon_url__"] = icon_result[0]
             else:
                 # Fallback to placeholder if no icon found
-                new_icon_dicts[i]["__icon_url__"] = "/static/icons/placeholder.svg"
+                new_icon_dicts[i]["__icon_url__"] = to_frontend_asset_url(
+                    "/static/icons/placeholder.svg"
+                )
 
     for i, new_image_dict in enumerate(new_image_dicts):
         set_dict_at_path(new_slide_content, new_image_dict_paths[i], new_image_dict)
@@ -199,5 +203,7 @@ def process_slide_add_placeholder_assets(slide: SlideModel):
     for icon_path in icon_paths:
         icon_dict = get_dict_at_path(slide.content, icon_path)
         # Use FastAPI static path for placeholder icon
-        icon_dict["__icon_url__"] = "/static/icons/placeholder.svg"
+        icon_dict["__icon_url__"] = to_frontend_asset_url(
+            "/static/icons/placeholder.svg"
+        )
         set_dict_at_path(slide.content, icon_path, icon_dict)
