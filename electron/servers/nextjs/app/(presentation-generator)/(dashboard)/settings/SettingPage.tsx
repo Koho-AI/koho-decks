@@ -282,7 +282,17 @@ const SettingsPage = () => {
             llmConfig={llmConfig}
           />}
           {mode === 'presenton' && selectedProvider === 'image-provider' && <ImageProvider llmConfig={llmConfig} setLlmConfig={setLlmConfig} />}
-          {selectedProvider === 'memory' && <MemorySettings />}
+          {selectedProvider === 'memory' && (
+            <MemorySettings
+              llmConfig={llmConfig}
+              onInputChange={(value, field) => {
+                setLlmConfig(prev => ({
+                  ...prev,
+                  [field]: value,
+                }));
+              }}
+            />
+          )}
           {selectedProvider === 'privacy' && <PrivacySettings />}
 
         </div>

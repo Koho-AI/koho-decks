@@ -1,58 +1,16 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Switch } from "@/components/ui/switch";
-import { Brain, Loader2 } from "lucide-react";
+import { Brain } from "lucide-react";
+import { LLMConfig } from "@/types/llm_config";
 
-const MemorySettings = () => {
-  const [memoryEnabled, setMemoryEnabled] = useState<boolean>(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+interface MemorySettingsProps {
+  llmConfig: LLMConfig;
+  onInputChange: (value: string | boolean, field: string) => void;
+}
 
-  useEffect(() => {
-    async function fetchConfig() {
-      try {
-        const configRes = await fetch("/api/user-config");
-        const config = await configRes.json();
-        setMemoryEnabled(config.MEMORI_ENABLED === true || config.MEMORI_ENABLED === "true");
-      } catch {
-        setMemoryEnabled(false);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchConfig();
-  }, []);
-
-  const handleMemoryToggle = async (enabled: boolean) => {
-    const prev = memoryEnabled;
-    setMemoryEnabled(enabled);
-    setSaving(true);
-    try {
-      if (window.electron?.setUserConfig) {
-        await window.electron.setUserConfig({
-          MEMORI_ENABLED: enabled,
-        } as any);
-      } else {
-        await fetch("/api/user-config", {
-          method: "POST",
-          body: JSON.stringify({ MEMORI_ENABLED: enabled }),
-        });
-      }
-    } catch {
-      setMemoryEnabled(prev);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="w-full bg-[#F9F8F8] p-7 rounded-[20px] flex items-center justify-center min-h-[200px]">
-        <Loader2 className="w-5 h-5 animate-spin text-[#5146E5]" />
-      </div>
-    );
-  }
+const MemorySettings = ({ llmConfig, onInputChange }: MemorySettingsProps) => {
+  const memoryEnabled = llmConfig.MEMORI_ENABLED === true;
 
   return (
     <div className="w-full space-y-6">
@@ -82,14 +40,10 @@ const MemorySettings = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {saving && (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#9CA3AF]" />
-            )}
             <Switch
               id="memory-toggle"
               checked={memoryEnabled}
-              onCheckedChange={handleMemoryToggle}
-              disabled={saving}
+              onCheckedChange={(checked) => onInputChange(checked, "MEMORI_ENABLED")}
             />
           </div>
         </div>
