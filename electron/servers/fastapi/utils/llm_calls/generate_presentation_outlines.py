@@ -144,7 +144,7 @@ async def generate_ppt_outline(
     model = get_model()
     response_model = get_presentation_outline_model_with_n_slides(n_slides)
 
-    client = LLMClient()
+    client = LLMClient(memori_wrap=False)
 
     try:
         async for chunk in client.stream_structured(

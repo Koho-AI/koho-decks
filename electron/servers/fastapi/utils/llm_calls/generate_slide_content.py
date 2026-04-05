@@ -106,7 +106,7 @@ async def get_slide_content_from_type_and_outline(
     verbosity: Optional[str] = None,
     instructions: Optional[str] = None,
 ):
-    client = LLMClient()
+    client = LLMClient(memori_wrap=False)
     model = get_model()
 
     response_schema = remove_fields_from_schema(

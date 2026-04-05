@@ -143,7 +143,7 @@ async def generate_presentation_structure(
     using_slides_markdown: bool = False,
 ) -> PresentationStructureModel:
 
-    client = LLMClient()
+    client = LLMClient(memori_wrap=False)
     model = get_model()
     response_model = get_presentation_structure_model_with_n_slides(
         len(presentation_outline.slides)

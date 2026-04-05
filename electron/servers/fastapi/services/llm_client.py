@@ -76,10 +76,21 @@ from utils.schema_utils import (
 
 
 class LLMClient:
-    def __init__(self):
+    def __init__(self, *, memori_wrap: bool = True):
+        """If ``memori_wrap`` is False, the provider SDK client is not passed through
+        Memori's ``llm.register`` (no recall injection or augmentation on those calls).
+        Use False for bulk generation (outlines, structure, initial slide content);
+        keep True (default) for slide edit flows where memory should apply.
+        """
+        self.memori_wrap = memori_wrap
         self.llm_provider = get_llm_provider()
         self._client = self._get_client()
         self.tool_calls_handler = LLMToolCallsHandler(self)
+
+    def _wrap_client_with_memori(self, client: Any) -> Any:
+        if not self.memori_wrap:
+            return client
+        return MEMORI_INTEGRATION.register_client(client)
 
     # ? Use tool calls
     def use_tool_calls_for_structured_output(self) -> bool:
@@ -128,7 +139,7 @@ class LLMClient:
                 detail="OpenAI API Key is not set",
             )
         client = AsyncOpenAI()
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     def _get_google_client(self):
         if not get_google_api_key_env():
@@ -137,7 +148,7 @@ class LLMClient:
                 detail="Google API Key is not set",
             )
         client = genai.Client()
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     def _get_anthropic_client(self):
         if not get_anthropic_api_key_env():
@@ -146,14 +157,14 @@ class LLMClient:
                 detail="Anthropic API Key is not set",
             )
         client = AsyncAnthropic()
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     def _get_ollama_client(self):
         client = AsyncOpenAI(
             base_url=(get_ollama_url_env() or "http://localhost:11434") + "/v1",
             api_key="ollama",
         )
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     def _get_custom_client(self):
         if not get_custom_llm_url_env():
@@ -165,7 +176,7 @@ class LLMClient:
             base_url=get_custom_llm_url_env(),
             api_key=get_custom_llm_api_key_env() or "null",
         )
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     def _get_codex_headers(self) -> dict:
         """Return the HTTP headers required for Codex Responses API requests.
@@ -234,7 +245,7 @@ class LLMClient:
             default_headers=default_headers,
             timeout=120.0,
         )
-        return MEMORI_INTEGRATION.register_client(client)
+        return self._wrap_client_with_memori(client)
 
     # ? Prompts
     def _get_system_prompt(self, messages: List[LLMMessage]) -> str:
