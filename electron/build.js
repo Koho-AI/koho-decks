@@ -2,6 +2,50 @@ const builder = require("electron-builder")
 const fs = require("fs")
 const path = require("path")
 
+const resolveOptionalPath = (value) => {
+  if (!value) return undefined
+  return path.isAbsolute(value) ? value : path.join(__dirname, value)
+}
+
+const resolveMacTargets = () => {
+  const target = (process.env.MAC_TARGET || "dmg").toLowerCase()
+
+  switch (target) {
+    case "mas":
+      return ["mas"]
+    case "mas-dev":
+      return ["mas-dev"]
+    case "mas-all":
+      return ["mas", "mas-dev"]
+    case "all":
+      return ["dmg", "mas", "mas-dev"]
+    default:
+      return ["dmg"]
+  }
+}
+
+const macTargets = resolveMacTargets()
+
+const resolveProvisioningProfile = (envValue, defaultFileName) => {
+  const fromEnv = resolveOptionalPath(envValue)
+  if (fromEnv) return fromEnv
+
+  const defaultPath = path.join(__dirname, "build", defaultFileName)
+  if (fs.existsSync(defaultPath)) return defaultPath
+
+  return undefined
+}
+
+const masProvisioningProfile = resolveProvisioningProfile(
+  process.env.MAS_PROVISIONING_PROFILE,
+  "MacAppStore.provisionprofile"
+)
+
+const masDevProvisioningProfile = resolveProvisioningProfile(
+  process.env.MAS_DEV_PROVISIONING_PROFILE,
+  "AppleDevelopment.provisionprofile"
+)
+
 // AfterPack hook: set executable permissions on macOS; no-op on Windows
 const afterPack = async (context) => {
   if (context.electronPlatformName === "darwin") {
@@ -75,9 +119,27 @@ const config = {
   afterPack,
   mac: {
     artifactName: "Presenton-${version}.${ext}",
-    target: ["dmg"],
+    target: macTargets,
     category: "public.app-category.productivity",
     icon: "resources/ui/assets/images/presenton_short_filled.png",
+  },
+  mas: {
+    type: "distribution",
+    identity: process.env.MAS_IDENTITY || "Apple Distribution",
+    provisioningProfile: masProvisioningProfile,
+    entitlements: "build/entitlements.mas.plist",
+    entitlementsInherit: "build/entitlements.mas.inherit.plist",
+    hardenedRuntime: false,
+    gatekeeperAssess: false,
+  },
+  masDev: {
+    type: "development",
+    identity: process.env.MAS_DEV_IDENTITY || "Apple Development",
+    provisioningProfile: masDevProvisioningProfile,
+    entitlements: "build/entitlements.mas.plist",
+    entitlementsInherit: "build/entitlements.mas.inherit.plist",
+    hardenedRuntime: false,
+    gatekeeperAssess: false,
   },
   linux: {
     artifactName: "Presenton-${version}.${ext}",
