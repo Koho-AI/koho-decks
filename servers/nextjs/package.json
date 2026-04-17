@@ -1,5 +1,5 @@
 {
-  "name": "presenton",
+  "name": "koho-decks",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "framer-motion": "^11.15.0",
     "@babel/standalone": "^7.28.2",
     "@babel/traverse": "^7.29.0",
     "@dnd-kit/core": "^6.3.1",

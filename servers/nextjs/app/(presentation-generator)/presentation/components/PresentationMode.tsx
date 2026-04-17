@@ -15,6 +15,31 @@ import { V1ContentRender } from "../../components/V1ContentRender";
 
 
 
+const KohoPresentSlide = ({ slide }: { slide: any }) => {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = React.useState(1);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const measure = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      setScale(Math.min(w / 1920, h / 1080, 1));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ width: "100%", height: "100%", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <div style={{ width: "1920px", height: "1080px", transformOrigin: "center center", transform: `scale(${scale})`, flexShrink: 0 }}>
+        <V1ContentRender slide={slide} isEditMode={true} />
+      </div>
+    </div>
+  );
+};
+
 interface PresentationModeProps {
   slides: Slide[];
   currentSlide: number;
@@ -54,8 +79,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     const fullscreenMargin = isFullscreen ? 16 : 0; // small safety margin to prevent clipping
     const availableWidth = Math.max(window.innerWidth - padding - fullscreenMargin, 0);
     const availableHeight = Math.max(window.innerHeight - padding - fullscreenMargin, 0);
-    const baseW = 1280;
-    const baseH = 720;
+    const baseW = 1920;
+    const baseH = 1080;
     const s = Math.min(availableWidth / baseW, availableHeight / baseH);
 
   }, [isFullscreen]);
@@ -252,7 +277,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
               key={slide.id}
               className={index === currentSlide ? "h-full w-full" : "hidden h-full w-full"}
             >
-              <V1ContentRender slide={slide} isEditMode={true} />
+              <KohoPresentSlide slide={slide} />
             </div>
           ))}
         </div>

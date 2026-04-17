@@ -117,6 +117,7 @@ export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEd
                                 ...slide.content,
                                 _logo_url__: theme ? theme.logo_url : null,
                                 __companyName__: (theme && theme.company_name) ? theme.company_name : null,
+                                __slideIndex__: slide.index,
                             }} />
                         </TiptapTextReplacer>
                     </EditableLayoutWrapper>
@@ -133,6 +134,7 @@ export const V1ContentRender = ({ slide, isEditMode, theme }: { slide: any, isEd
             ...slide.content,
             _logo_url__: theme ? theme.logo_url : null,
             __companyName__: (theme && theme.company_name) ? theme.company_name : null,
+                                __slideIndex__: slide.index,
         }} />
     )
 };

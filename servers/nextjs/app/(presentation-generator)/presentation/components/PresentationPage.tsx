@@ -146,7 +146,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
             }}
             className="p-6 rounded-[20px] flex flex-col items-center overflow-hidden justify-center  border border-[#EDECEC] "
           >
-            <div className="w-full max-w-[1280px] h-full">
+            <div className="w-full max-w-[1920px] h-full">
 
               {!presentationData ||
                 loading ||

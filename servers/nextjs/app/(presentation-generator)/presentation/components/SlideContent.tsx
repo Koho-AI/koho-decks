@@ -22,6 +22,27 @@ import { addToHistory } from "@/store/slices/undoRedoSlice";
 import { V1ContentRender } from "../../components/V1ContentRender";
 import NewSlide from "./NewSlide";
 
+const KohoResponsiveSlide = ({ slide }: { slide: any }) => {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = React.useState(1);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const measure = () => setScale(Math.min(el.clientWidth / 1920, 1));
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ width: "100%", position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
+      <div style={{ width: "1920px", height: "1080px", transformOrigin: "top left", transform: `scale(${scale})` }}>
+        <V1ContentRender slide={slide} isEditMode={true} theme={null} />
+      </div>
+    </div>
+  );
+};
+
 interface SlideContentProps {
   slide: any;
   index: number;
@@ -145,7 +166,7 @@ const SlideContent = ({ slide, index, presentationId }: SlideContentProps) => {
           data-group={slide.layout_group}
           className={` w-full  group font-syne  `}
         >
-          <V1ContentRender slide={slide} isEditMode={true} theme={null} />
+          <KohoResponsiveSlide slide={slide} />
           {!showNewSlideSelection && (
             <div className="group-hover:opacity-100 hidden md:block opacity-0 transition-opacity my-4 duration-300">
               <ToolTip content="Add new slide below">

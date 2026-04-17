@@ -5,39 +5,22 @@ import Header from "@/app/(presentation-generator)/(dashboard)/dashboard/compone
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Presenton | Open Source AI presentation generator",
-  description:
-    "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
+  title: "Create a deck | Koho Decks",
+  description: "Koho Decks — pitch deck generator for the Koho team.",
   alternates: {
-    canonical: "https://presenton.ai/create",
+    canonical: "https://decks.koho.ai/create",
   },
-  keywords: [
-    "presentation generator",
-    "AI presentations",
-    "data visualization",
-    "automatic presentation maker",
-    "professional slides",
-    "data-driven presentations",
-    "document to presentation",
-    "presentation automation",
-    "smart presentation tool",
-    "business presentations",
-  ],
   openGraph: {
-    title: "Create Data Presentation | PresentOn",
-    description:
-      "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
+    title: "Create a deck | Koho Decks",
+    description: "Koho Decks — pitch deck generator for the Koho team.",
     type: "website",
-    url: "https://presenton.ai/create",
-    siteName: "PresentOn",
+    url: "https://decks.koho.ai/create",
+    siteName: "Koho Decks",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Create Data Presentation | PresentOn",
-    description:
-      "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
-    site: "@presenton_ai",
-    creator: "@presenton_ai",
+    title: "Create a deck | Koho Decks",
+    description: "Koho Decks — pitch deck generator for the Koho team.",
   },
 };
 
@@ -47,9 +30,9 @@ const page = () => {
       <Header />
       <div className="flex flex-col items-center justify-center  mb-8">
         <h1 className="text-[64px] font-normal font-unbounded text-[#101323] ">
-          AI Presentation
+          New Koho Deck
         </h1>
-        <p className="text-xl font-syne text-[#101323CC]">Choose a design, set preferences, and generate polished slides.</p>
+        <p className="text-xl font-syne text-[#101323CC]">Pick a template, set preferences, and generate a brand-aligned deck.</p>
       </div>
 
       <UploadPage />

@@ -12,7 +12,7 @@ const SettingSideBar = ({ mode, setMode, selectedProvider, setSelectedProvider }
                             background: mode === 'presenton' ? '#F4F3FF' : 'transparent',
                             color: mode === 'presenton' ? '#5146E5' : '#3A3A3A'
                         }}
-                    >Presenton</button>
+                    >Built-in</button>
                     <svg xmlns="http://www.w3.org/2000/svg" className='mx-1' width="2" height="17" viewBox="0 0 2 17" fill="none">
                         <path d="M1 0V16.5" stroke="#EDECEC" strokeWidth="2" />
                     </svg>

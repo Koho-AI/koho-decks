@@ -10,7 +10,7 @@ interface SortableSlideProps {
     selectedSlide: number;
     onSlideClick: (index: any) => void;
 }
-const SCALE = 0.125;
+const SCALE = 0.125; const SLIDE_W = 1920; const SLIDE_H = 1080;
 
 export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: SortableSlideProps) {
     const searchParams = useSearchParams();
@@ -61,13 +61,13 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: Sor
 
             <div
                 className="relative"
-                style={{ height: `${720 * SCALE}px`, overflow: "hidden" }}
+                style={{ height: `${SLIDE_H * SCALE}px`, overflow: "hidden" }}
             >
                 <div
                     className="absolute top-0 left-0 pointer-events-none"
                     style={{
-                        width: 1280,
-                        height: 720,
+                        width: SLIDE_W,
+                        height: SLIDE_H,
                         transformOrigin: "top left",
                         transform: `scale(${SCALE})`,
                     }}

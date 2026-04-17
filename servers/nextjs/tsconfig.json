@@ -26,6 +26,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@kit/ui/*": [
+        "./app/koho/ui/*"
+      ],
+      "@kit/ui": [
+        "./app/koho/ui/index.ts"
       ]
     }
   },

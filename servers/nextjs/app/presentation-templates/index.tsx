@@ -453,4 +453,152 @@ export function getLayoutByLayoutId(layout: string): TemplateWithData | undefine
         return template.layouts.find((t) => t.layoutId === layout);
     }
     return undefined;
+}// ─────────────────────────────────────────────────────────────────────────────
+// KOHO TEMPLATE PATCH
+// This file is appended to the bottom of index.tsx during the Docker build.
+// It imports and registers the Koho template group.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// @ts-nocheck — appended to existing index.tsx, imports are relative to that file
+
+// Core layouts
+import KohoIntroSlideLayout, { Schema as KohoIntroSchema, layoutId as KohoIntroId, layoutName as KohoIntroName, layoutDescription as KohoIntroDesc } from "./koho-pitch/IntroSlideLayout";
+import KohoBulletPointsSlideLayout, { Schema as KohoBulletPointsSchema, layoutId as KohoBulletPointsId, layoutName as KohoBulletPointsName, layoutDescription as KohoBulletPointsDesc } from "./koho-pitch/BulletPointsSlideLayout";
+import KohoMetricsSlideLayout, { Schema as KohoMetricsSchema, layoutId as KohoMetricsId, layoutName as KohoMetricsName, layoutDescription as KohoMetricsDesc } from "./koho-pitch/MetricsSlideLayout";
+import KohoPricingSlideLayout, { Schema as KohoPricingSchema, layoutId as KohoPricingId, layoutName as KohoPricingName, layoutDescription as KohoPricingDesc } from "./koho-pitch/PricingSlideLayout";
+
+// Showcase layouts (product mockups in browser frames)
+import KohoDashboardShowcaseSlide, { Schema as KohoDashboardSchema, layoutId as KohoDashboardId, layoutName as KohoDashboardName, layoutDescription as KohoDashboardDesc } from "./koho-pitch/DashboardShowcaseSlide";
+
+// Full dashboard showcase layouts (product mockups)
+import KohoHomeDashboardSlide, { Schema as KohoHomeSchema, layoutId as KohoHomeId, layoutName as KohoHomeName, layoutDescription as KohoHomeDesc } from "./koho-pitch/HomeDashboardSlide";
+import KohoFinanceDashboardSlide, { Schema as KohoFinanceSchema, layoutId as KohoFinanceId, layoutName as KohoFinanceName, layoutDescription as KohoFinanceDesc } from "./koho-pitch/FinanceDashboardSlide";
+import KohoPipelineDashboardSlide, { Schema as KohoPipelineDashSchema, layoutId as KohoPipelineDashId, layoutName as KohoPipelineDashName, layoutDescription as KohoPipelineDashDesc } from "./koho-pitch/PipelineDashboardSlide";
+import KohoForecastDashboardSlide, { Schema as KohoForecastSchema, layoutId as KohoForecastId, layoutName as KohoForecastName, layoutDescription as KohoForecastDesc } from "./koho-pitch/ForecastDashboardSlide";
+import KohoRiskDashboardSlide, { Schema as KohoRiskDashSchema, layoutId as KohoRiskDashId, layoutName as KohoRiskDashName, layoutDescription as KohoRiskDashDesc } from "./koho-pitch/RiskDashboardSlide";
+import KohoOperationsDashboardSlide, { Schema as KohoOpsSchema, layoutId as KohoOpsId, layoutName as KohoOpsName, layoutDescription as KohoOpsDesc } from "./koho-pitch/OperationsDashboardSlide";
+import KohoEfficiencyDashboardSlide, { Schema as KohoEffSchema, layoutId as KohoEffId, layoutName as KohoEffName, layoutDescription as KohoEffDesc } from "./koho-pitch/EfficiencyDashboardSlide";
+import KohoLeadershipDashboardSlide, { Schema as KohoLeadSchema, layoutId as KohoLeadId, layoutName as KohoLeadName, layoutDescription as KohoLeadDesc } from "./koho-pitch/LeadershipDashboardSlide";
+import KohoCommunityDashboardSlide, { Schema as KohoCommSchema, layoutId as KohoCommId, layoutName as KohoCommName, layoutDescription as KohoCommDesc } from "./koho-pitch/CommunityDashboardSlide";
+import KohoIntegrationsDashboardSlide, { Schema as KohoIntegSchema, layoutId as KohoIntegId, layoutName as KohoIntegName, layoutDescription as KohoIntegDesc } from "./koho-pitch/IntegrationsDashboardSlide";
+import KohoSingleSourceDashboardSlide, { Schema as KohoSSSchema, layoutId as KohoSSId, layoutName as KohoSSName, layoutDescription as KohoSSDesc } from "./koho-pitch/SingleSourceDashboardSlide";
+import KohoSolutionsDashboardSlide, { Schema as KohoSolSchema, layoutId as KohoSolId, layoutName as KohoSolName, layoutDescription as KohoSolDesc } from "./koho-pitch/SolutionsDashboardSlide";
+
+// Additional content layouts
+import KohoStatementSlideLayout, { Schema as KohoStmtSchema, layoutId as KohoStmtId, layoutName as KohoStmtName, layoutDescription as KohoStmtDesc } from "./koho-pitch/StatementSlideLayout";
+import KohoTwoColumnSlideLayout, { Schema as KohoTwoColSchema, layoutId as KohoTwoColId, layoutName as KohoTwoColName, layoutDescription as KohoTwoColDesc } from "./koho-pitch/TwoColumnSlideLayout";
+import KohoTimelineSlideLayout, { Schema as KohoTimeSchema, layoutId as KohoTimeId, layoutName as KohoTimeName, layoutDescription as KohoTimeDesc } from "./koho-pitch/TimelineSlideLayout";
+import KohoQuoteSlideLayout, { Schema as KohoQuoteSchema, layoutId as KohoQuoteId, layoutName as KohoQuoteName, layoutDescription as KohoQuoteDesc } from "./koho-pitch/QuoteSlideLayout";
+import KohoTableSlideLayout, { Schema as KohoTableSchema, layoutId as KohoTableId, layoutName as KohoTableName, layoutDescription as KohoTableDesc } from "./koho-pitch/TableSlideLayout";
+import KohoCTASlideLayout, { Schema as KohoCTASchema, layoutId as KohoCTAId, layoutName as KohoCTAName, layoutDescription as KohoCTADesc } from "./koho-pitch/CTASlideLayout";
+import KohoSectionDividerSlideLayout, { Schema as KohoSecDivSchema, layoutId as KohoSecDivId, layoutName as KohoSecDivName, layoutDescription as KohoSecDivDesc } from "./koho-pitch/SectionDividerSlideLayout";
+import KohoAgendaSlideLayout, { Schema as KohoAgendaSchema, layoutId as KohoAgendaId, layoutName as KohoAgendaName, layoutDescription as KohoAgendaDesc } from "./koho-pitch/AgendaSlideLayout";
+import KohoTeamSlideLayout, { Schema as KohoTeamSchema, layoutId as KohoTeamId, layoutName as KohoTeamName, layoutDescription as KohoTeamDesc } from "./koho-pitch/TeamSlideLayout";
+
+import kohoSettings from "./koho-pitch/settings.json";
+
+export const kohoTemplates: TemplateWithData[] = [
+    // Core layouts
+    createTemplateEntry(KohoIntroSlideLayout, KohoIntroSchema, KohoIntroId, KohoIntroName, KohoIntroDesc, "koho-pitch", "IntroSlideLayout"),
+    createTemplateEntry(KohoBulletPointsSlideLayout, KohoBulletPointsSchema, KohoBulletPointsId, KohoBulletPointsName, KohoBulletPointsDesc, "koho-pitch", "BulletPointsSlideLayout"),
+    createTemplateEntry(KohoMetricsSlideLayout, KohoMetricsSchema, KohoMetricsId, KohoMetricsName, KohoMetricsDesc, "koho-pitch", "MetricsSlideLayout"),
+    createTemplateEntry(KohoPricingSlideLayout, KohoPricingSchema, KohoPricingId, KohoPricingName, KohoPricingDesc, "koho-pitch", "PricingSlideLayout"),
+    // Showcase layouts
+    createTemplateEntry(KohoDashboardShowcaseSlide, KohoDashboardSchema, KohoDashboardId, KohoDashboardName, KohoDashboardDesc, "koho-pitch", "DashboardShowcaseSlide"),
+    // Full dashboard showcases
+    createTemplateEntry(KohoHomeDashboardSlide, KohoHomeSchema, KohoHomeId, KohoHomeName, KohoHomeDesc, "koho-pitch", "HomeDashboardSlide"),
+    createTemplateEntry(KohoFinanceDashboardSlide, KohoFinanceSchema, KohoFinanceId, KohoFinanceName, KohoFinanceDesc, "koho-pitch", "FinanceDashboardSlide"),
+    createTemplateEntry(KohoPipelineDashboardSlide, KohoPipelineDashSchema, KohoPipelineDashId, KohoPipelineDashName, KohoPipelineDashDesc, "koho-pitch", "PipelineDashboardSlide"),
+    createTemplateEntry(KohoForecastDashboardSlide, KohoForecastSchema, KohoForecastId, KohoForecastName, KohoForecastDesc, "koho-pitch", "ForecastDashboardSlide"),
+    createTemplateEntry(KohoRiskDashboardSlide, KohoRiskDashSchema, KohoRiskDashId, KohoRiskDashName, KohoRiskDashDesc, "koho-pitch", "RiskDashboardSlide"),
+    createTemplateEntry(KohoOperationsDashboardSlide, KohoOpsSchema, KohoOpsId, KohoOpsName, KohoOpsDesc, "koho-pitch", "OperationsDashboardSlide"),
+    createTemplateEntry(KohoEfficiencyDashboardSlide, KohoEffSchema, KohoEffId, KohoEffName, KohoEffDesc, "koho-pitch", "EfficiencyDashboardSlide"),
+    createTemplateEntry(KohoLeadershipDashboardSlide, KohoLeadSchema, KohoLeadId, KohoLeadName, KohoLeadDesc, "koho-pitch", "LeadershipDashboardSlide"),
+    createTemplateEntry(KohoCommunityDashboardSlide, KohoCommSchema, KohoCommId, KohoCommName, KohoCommDesc, "koho-pitch", "CommunityDashboardSlide"),
+    createTemplateEntry(KohoIntegrationsDashboardSlide, KohoIntegSchema, KohoIntegId, KohoIntegName, KohoIntegDesc, "koho-pitch", "IntegrationsDashboardSlide"),
+    createTemplateEntry(KohoSingleSourceDashboardSlide, KohoSSSchema, KohoSSId, KohoSSName, KohoSSDesc, "koho-pitch", "SingleSourceDashboardSlide"),
+    createTemplateEntry(KohoSolutionsDashboardSlide, KohoSolSchema, KohoSolId, KohoSolName, KohoSolDesc, "koho-pitch", "SolutionsDashboardSlide"),
+    // Additional content layouts
+    createTemplateEntry(KohoStatementSlideLayout, KohoStmtSchema, KohoStmtId, KohoStmtName, KohoStmtDesc, "koho-pitch", "StatementSlideLayout"),
+    createTemplateEntry(KohoTwoColumnSlideLayout, KohoTwoColSchema, KohoTwoColId, KohoTwoColName, KohoTwoColDesc, "koho-pitch", "TwoColumnSlideLayout"),
+    createTemplateEntry(KohoTimelineSlideLayout, KohoTimeSchema, KohoTimeId, KohoTimeName, KohoTimeDesc, "koho-pitch", "TimelineSlideLayout"),
+    createTemplateEntry(KohoQuoteSlideLayout, KohoQuoteSchema, KohoQuoteId, KohoQuoteName, KohoQuoteDesc, "koho-pitch", "QuoteSlideLayout"),
+    createTemplateEntry(KohoTableSlideLayout, KohoTableSchema, KohoTableId, KohoTableName, KohoTableDesc, "koho-pitch", "TableSlideLayout"),
+    createTemplateEntry(KohoCTASlideLayout, KohoCTASchema, KohoCTAId, KohoCTAName, KohoCTADesc, "koho-pitch", "CTASlideLayout"),
+    createTemplateEntry(KohoSectionDividerSlideLayout, KohoSecDivSchema, KohoSecDivId, KohoSecDivName, KohoSecDivDesc, "koho-pitch", "SectionDividerSlideLayout"),
+    createTemplateEntry(KohoAgendaSlideLayout, KohoAgendaSchema, KohoAgendaId, KohoAgendaName, KohoAgendaDesc, "koho-pitch", "AgendaSlideLayout"),
+    createTemplateEntry(KohoTeamSlideLayout, KohoTeamSchema, KohoTeamId, KohoTeamName, KohoTeamDesc, "koho-pitch", "TeamSlideLayout"),
+];
+
+// Append to allLayouts
+allLayouts.push(...kohoTemplates);
+
+// Append to templates
+templates.push({
+    id: "koho-pitch",
+    name: "Koho Pitch",
+    description: kohoSettings.description,
+    settings: kohoSettings as TemplateGroupSettings,
+    layouts: kohoTemplates,
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIGHT MODE VARIANT
+// Same 26 layouts, rendered with the V3 light palette. Each wrapper injects
+// __theme__: 'light' into the data prop before rendering the underlying layout.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Use JSX so React is resolved from the ambient scope of index.tsx
+// (which already imports React via the built-in template components)
+function wrapLight(Component: any) {
+    const Wrapped = (props: any) => {
+        const mergedData = { ...(props.data || {}), __theme__: 'light' };
+        return <Component data={mergedData} />;
+    };
+    Wrapped.displayName = `Light(${Component.displayName || Component.name || 'Layout'})`;
+    return Wrapped;
 }
+
+// Build light layout IDs by appending "-light" to the dark layout IDs
+const kohoLightTemplates: TemplateWithData[] = [
+    // Core layouts
+    createTemplateEntry(wrapLight(KohoIntroSlideLayout), KohoIntroSchema, `${KohoIntroId}-light`, `${KohoIntroName} (Light)`, KohoIntroDesc, "koho-pitch-light", "IntroSlideLayout"),
+    createTemplateEntry(wrapLight(KohoBulletPointsSlideLayout), KohoBulletPointsSchema, `${KohoBulletPointsId}-light`, `${KohoBulletPointsName} (Light)`, KohoBulletPointsDesc, "koho-pitch-light", "BulletPointsSlideLayout"),
+    createTemplateEntry(wrapLight(KohoMetricsSlideLayout), KohoMetricsSchema, `${KohoMetricsId}-light`, `${KohoMetricsName} (Light)`, KohoMetricsDesc, "koho-pitch-light", "MetricsSlideLayout"),
+    createTemplateEntry(wrapLight(KohoPricingSlideLayout), KohoPricingSchema, `${KohoPricingId}-light`, `${KohoPricingName} (Light)`, KohoPricingDesc, "koho-pitch-light", "PricingSlideLayout"),
+    // Showcase
+    createTemplateEntry(wrapLight(KohoDashboardShowcaseSlide), KohoDashboardSchema, `${KohoDashboardId}-light`, `${KohoDashboardName} (Light)`, KohoDashboardDesc, "koho-pitch-light", "DashboardShowcaseSlide"),
+    // Full dashboard showcases
+    createTemplateEntry(wrapLight(KohoHomeDashboardSlide), KohoHomeSchema, `${KohoHomeId}-light`, `${KohoHomeName} (Light)`, KohoHomeDesc, "koho-pitch-light", "HomeDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoFinanceDashboardSlide), KohoFinanceSchema, `${KohoFinanceId}-light`, `${KohoFinanceName} (Light)`, KohoFinanceDesc, "koho-pitch-light", "FinanceDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoPipelineDashboardSlide), KohoPipelineDashSchema, `${KohoPipelineDashId}-light`, `${KohoPipelineDashName} (Light)`, KohoPipelineDashDesc, "koho-pitch-light", "PipelineDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoForecastDashboardSlide), KohoForecastSchema, `${KohoForecastId}-light`, `${KohoForecastName} (Light)`, KohoForecastDesc, "koho-pitch-light", "ForecastDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoRiskDashboardSlide), KohoRiskDashSchema, `${KohoRiskDashId}-light`, `${KohoRiskDashName} (Light)`, KohoRiskDashDesc, "koho-pitch-light", "RiskDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoOperationsDashboardSlide), KohoOpsSchema, `${KohoOpsId}-light`, `${KohoOpsName} (Light)`, KohoOpsDesc, "koho-pitch-light", "OperationsDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoEfficiencyDashboardSlide), KohoEffSchema, `${KohoEffId}-light`, `${KohoEffName} (Light)`, KohoEffDesc, "koho-pitch-light", "EfficiencyDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoLeadershipDashboardSlide), KohoLeadSchema, `${KohoLeadId}-light`, `${KohoLeadName} (Light)`, KohoLeadDesc, "koho-pitch-light", "LeadershipDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoCommunityDashboardSlide), KohoCommSchema, `${KohoCommId}-light`, `${KohoCommName} (Light)`, KohoCommDesc, "koho-pitch-light", "CommunityDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoIntegrationsDashboardSlide), KohoIntegSchema, `${KohoIntegId}-light`, `${KohoIntegName} (Light)`, KohoIntegDesc, "koho-pitch-light", "IntegrationsDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoSingleSourceDashboardSlide), KohoSSSchema, `${KohoSSId}-light`, `${KohoSSName} (Light)`, KohoSSDesc, "koho-pitch-light", "SingleSourceDashboardSlide"),
+    createTemplateEntry(wrapLight(KohoSolutionsDashboardSlide), KohoSolSchema, `${KohoSolId}-light`, `${KohoSolName} (Light)`, KohoSolDesc, "koho-pitch-light", "SolutionsDashboardSlide"),
+    // Additional content layouts
+    createTemplateEntry(wrapLight(KohoStatementSlideLayout), KohoStmtSchema, `${KohoStmtId}-light`, `${KohoStmtName} (Light)`, KohoStmtDesc, "koho-pitch-light", "StatementSlideLayout"),
+    createTemplateEntry(wrapLight(KohoTwoColumnSlideLayout), KohoTwoColSchema, `${KohoTwoColId}-light`, `${KohoTwoColName} (Light)`, KohoTwoColDesc, "koho-pitch-light", "TwoColumnSlideLayout"),
+    createTemplateEntry(wrapLight(KohoTimelineSlideLayout), KohoTimeSchema, `${KohoTimeId}-light`, `${KohoTimeName} (Light)`, KohoTimeDesc, "koho-pitch-light", "TimelineSlideLayout"),
+    createTemplateEntry(wrapLight(KohoQuoteSlideLayout), KohoQuoteSchema, `${KohoQuoteId}-light`, `${KohoQuoteName} (Light)`, KohoQuoteDesc, "koho-pitch-light", "QuoteSlideLayout"),
+    createTemplateEntry(wrapLight(KohoTableSlideLayout), KohoTableSchema, `${KohoTableId}-light`, `${KohoTableName} (Light)`, KohoTableDesc, "koho-pitch-light", "TableSlideLayout"),
+    createTemplateEntry(wrapLight(KohoCTASlideLayout), KohoCTASchema, `${KohoCTAId}-light`, `${KohoCTAName} (Light)`, KohoCTADesc, "koho-pitch-light", "CTASlideLayout"),
+    createTemplateEntry(wrapLight(KohoSectionDividerSlideLayout), KohoSecDivSchema, `${KohoSecDivId}-light`, `${KohoSecDivName} (Light)`, KohoSecDivDesc, "koho-pitch-light", "SectionDividerSlideLayout"),
+    createTemplateEntry(wrapLight(KohoAgendaSlideLayout), KohoAgendaSchema, `${KohoAgendaId}-light`, `${KohoAgendaName} (Light)`, KohoAgendaDesc, "koho-pitch-light", "AgendaSlideLayout"),
+    createTemplateEntry(wrapLight(KohoTeamSlideLayout), KohoTeamSchema, `${KohoTeamId}-light`, `${KohoTeamName} (Light)`, KohoTeamDesc, "koho-pitch-light", "TeamSlideLayout"),
+];
+
+allLayouts.push(...kohoLightTemplates);
+
+templates.push({
+    id: "koho-pitch-light",
+    name: "Koho Pitch Light",
+    description: "Koho-branded pitch deck layouts in light mode. Signal Green on V3 Cool Electric light palette, Manrope typography.",
+    settings: { ...kohoSettings, default: false } as TemplateGroupSettings,
+    layouts: kohoLightTemplates,
+});

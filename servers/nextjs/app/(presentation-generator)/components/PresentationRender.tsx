@@ -3,8 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { V1ContentRender } from '../../(presentation-generator)/components/V1ContentRender';
 
 
-const BASE_WIDTH = 1280;
-const BASE_HEIGHT = 720;
+const BASE_WIDTH = 1920;
+const BASE_HEIGHT = 1080;
 
 const SlideScale = ({ slide }: { slide: any }) => {
 
@@ -38,7 +38,7 @@ const SlideScale = ({ slide }: { slide: any }) => {
         className="relative w-full  shadow-md"
     >
         <div
-            className="relative mx-auto max-w-[1280px] "
+            className="relative mx-auto max-w-[1920px] "
             style={{ height: `${BASE_HEIGHT * scale}px`, overflow: "hidden" }}
         >
             <div

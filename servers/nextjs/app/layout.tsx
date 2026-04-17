@@ -30,46 +30,44 @@ const unbounded = Unbounded({
 
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://presenton.ai"),
-  title: "Presenton - Open Source AI presentation generator",
+  metadataBase: new URL("https://decks.koho.ai"),
+  title: "Koho Decks — Pitch deck generator for flex workspace operations",
   description:
-    "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
+    "Koho Decks: the internal pitch deck generator for the Koho team. Signal-green brand templates, ToV baked in, pitch to clients in minutes.",
   keywords: [
-    "AI presentation generator",
-    "data storytelling",
-    "data visualization tool",
-    "AI data presentation",
+    "Koho",
+    "Koho Decks",
+    "pitch deck",
+    "flex workspace operations",
+    "context platform",
     "presentation generator",
-    "data to presentation",
-    "interactive presentations",
-    "professional slides",
   ],
   openGraph: {
-    title: "Presenton - Open Source AI presentation generator",
+    title: "Koho Decks",
     description:
-      "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
-    url: "https://presenton.ai",
-    siteName: "Presenton",
+      "Internal pitch deck generator for the Koho team. Brand-aligned slides, ToV baked in.",
+    url: "https://decks.koho.ai",
+    siteName: "Koho Decks",
     images: [
       {
-        url: "https://presenton.ai/presenton-feature-graphics.png",
+        url: "/koho/logos/koho-dark.svg",
         width: 1200,
         height: 630,
-        alt: "Presenton Logo",
+        alt: "Koho Decks",
       },
     ],
     type: "website",
-    locale: "en_US",
+    locale: "en_GB",
   },
   alternates: {
-    canonical: "https://presenton.ai",
+    canonical: "https://decks.koho.ai",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Presenton - Open Source AI presentation generator",
+    title: "Koho Decks",
     description:
-      "Open-source AI presentation generator with custom layouts, multi-model support (OpenAI, Gemini, Ollama), and PDF/PPTX export. A free Gamma alternative.",
-    images: ["https://presenton.ai/presenton-feature-graphics.png"],
+      "Internal pitch deck generator for the Koho team.",
+    images: ["/koho/logos/koho-dark.svg"],
   },
 };
 

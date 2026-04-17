@@ -21,7 +21,7 @@ const ModeSelectStep = ({ setStep, setSelectedMode }: { setStep: (step: number) 
                         <div className=''>
                             <div className='flex items-start gap-2 relative '>
 
-                                <h3 className='text-black text-[18px] font-medium font-syne'>Presenton</h3>
+                                <h3 className='text-black text-[18px] font-medium font-syne'>Koho Decks</h3>
                                 <p className='bg-[#F4F3FF] px-3 py-1.5 rounded-[30px] text-[#7A5AF8] text-[9px] absolute left-[95px] top-[-10px]'>PPTX</p>
                             </div>
                             <p className='text-[#999999] text-[14px] font-normal font-syne'>Optimized for fast, structured slide generation.</p>

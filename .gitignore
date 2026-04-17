@@ -22,3 +22,6 @@ container.db
 .agents
 skills-lock.json
 .codex/
+# Local IDE / Claude Code state
+.claude/
+.DS_Store
