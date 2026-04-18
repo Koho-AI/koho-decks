@@ -1,6 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import { auth, signIn } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import KohoDecksWordmark from "@/components/KohoDecksWordmark";
 
 /**
@@ -18,6 +18,11 @@ export default async function SignInPage({
   if (session?.user) {
     redirect(params.callbackUrl ?? "/dashboard");
   }
+
+  const callbackUrl = params.callbackUrl ?? "/dashboard";
+  const signinHref = `/api/auth/signin/google?callbackUrl=${encodeURIComponent(
+    callbackUrl
+  )}`;
 
   return (
     <main
@@ -82,17 +87,15 @@ export default async function SignInPage({
           </div>
         )}
 
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", {
-              redirectTo: params.callbackUrl ?? "/dashboard",
-            });
+        <a
+          href={signinHref}
+          style={{
+            width: "100%",
+            textDecoration: "none",
           }}
-          style={{ width: "100%" }}
         >
           <button
-            type="submit"
+            type="button"
             style={{
               width: "100%",
               display: "inline-flex",
@@ -157,7 +160,7 @@ export default async function SignInPage({
             </svg>
             Sign in with Google
           </button>
-        </form>
+        </a>
 
         <p
           style={{
