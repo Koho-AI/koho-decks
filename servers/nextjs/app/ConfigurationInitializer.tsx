@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { checkIfSelectedOllamaModelIsPulled } from '@/utils/providerUtils';
 import { LLMConfig } from '@/types/llm_config';
+import KohoDecksWordmark from '@/components/KohoDecksWordmark';
 
 export function ConfigurationInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
