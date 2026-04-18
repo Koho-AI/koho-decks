@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import KohoDecksWordmark from "@/components/KohoDecksWordmark";
+import HeaderUserMenu from "@/components/HeaderUserMenu";
 const Header = () => {
   const pathname = usePathname();
   return (
@@ -13,12 +14,11 @@ const Header = () => {
       <Wrapper className="px-5 sm:px-10 lg:px-20">
         <div className="flex items-center justify-between py-1">
           <div className="flex items-center gap-3">
-            {/* {(pathname !== "/upload" && pathname !== "/dashboard") && <BackBtn />} */}
             <Link href="/dashboard" onClick={() => trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/dashboard" })}>
               <KohoDecksWordmark mode="light" size="md" />
             </Link>
           </div>
-
+          <HeaderUserMenu />
         </div>
       </Wrapper>
     </div>

@@ -42,6 +42,8 @@ from utils.llm_calls.generate_presentation_outlines import generate_ppt_outline
 from models.sql.slide import SlideModel
 from models.sse_response import SSECompleteResponse, SSEErrorResponse, SSEResponse
 
+from api.auth_context import AuthContext
+from api.deps import get_current_user_strict
 from services.database import get_async_session
 from services.temp_file_service import TEMP_FILE_SERVICE
 from services.concurrent_service import CONCURRENT_SERVICE
@@ -68,18 +70,35 @@ from utils.process_slides import (
 import uuid
 
 
-PRESENTATION_ROUTER = APIRouter(prefix="/presentation", tags=["Presentation"])
+PRESENTATION_ROUTER = APIRouter(
+    prefix="/presentation",
+    tags=["Presentation"],
+    # Phase 3d — every presentation endpoint requires an authenticated
+    # caller. AuthMiddleware populates request.state.auth from the
+    # NextAuth session cookie; this dependency raises 401 when absent.
+    dependencies=[Depends(get_current_user_strict)],
+)
 
 
 @PRESENTATION_ROUTER.get("/all", response_model=List[PresentationWithSlides])
-async def get_all_presentations(sql_session: AsyncSession = Depends(get_async_session)):
+async def get_all_presentations(
+    sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
+):
     presentations_with_slides = []
 
+    # Phase 3d — scope to the caller's organisation. Legacy rows with
+    # NULL organisation_id are shown too so no deck vanishes during the
+    # ownership rollout; a later pass will backfill + drop the NULL case.
     query = (
         select(PresentationModel, SlideModel)
         .join(
             SlideModel,
             (SlideModel.presentation == PresentationModel.id) & (SlideModel.index == 0),
+        )
+        .where(
+            (PresentationModel.organisation_id == ctx.organisation_id)
+            | (PresentationModel.organisation_id.is_(None))
         )
         .order_by(PresentationModel.created_at.desc())
     )
@@ -140,6 +159,7 @@ async def create_presentation(
     web_search: Annotated[bool, Body()] = False,
     theme: Annotated[Optional[dict], Body()] = None,
     sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
 ):
 
     if include_table_of_contents and n_slides < 3:
@@ -163,6 +183,8 @@ async def create_presentation(
         include_title_slide=include_title_slide,
         web_search=web_search,
         theme=theme,
+        owner_user_id=ctx.user_id,
+        organisation_id=ctx.organisation_id,
     )
 
     sql_session.add(presentation)
