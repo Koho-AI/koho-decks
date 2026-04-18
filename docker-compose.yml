@@ -1,18 +1,49 @@
 services:
+  # ─────────────────────────────────────────────────────────────────────
+  # Postgres — Koho Decks primary database (Phase 2 onward).
+  # SQLite is no longer wired up; the app talks to this service via
+  # DATABASE_URL=postgresql://koho:koho@postgres:5432/koho_decks.
+  # Data lives in the named volume `koho_decks_pg_data`, not a bind
+  # mount, so it survives container removal but isn't checked into
+  # version control or littered into the project root.
+  # ─────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-koho}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-koho}
+      POSTGRES_DB: ${POSTGRES_DB:-koho_decks}
+    volumes:
+      - koho_decks_pg_data:/var/lib/postgresql/data
+    ports:
+      # Expose only on loopback so other apps on the host can attach
+      # (e.g. psql) without the DB being reachable from outside.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-koho} -d ${POSTGRES_DB:-koho_decks}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   production:
-    # image: ghcr.io/presenton/presenton:latest
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       # You can replace 5000 with any other port number of your choice to run Presenton on a different port number.
-      - "5000:80"
+      - "${HOST_PORT:-5000}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
       - ./app_data:/app_data
     environment:
       - MIGRATE_DATABASE_ON_STARTUP=true
+      # Default to the in-network Postgres unless the user pins a different DATABASE_URL in .env
+      - DATABASE_URL=${DATABASE_URL:-postgresql://koho:koho@postgres:5432/koho_decks}
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -32,7 +63,6 @@ services:
       - TOOL_CALLS=${TOOL_CALLS}
       - DISABLE_THINKING=${DISABLE_THINKING}
       - WEB_GROUNDING=${WEB_GROUNDING}
-      - DATABASE_URL=${DATABASE_URL}
       - DISABLE_ANONYMOUS_TRACKING=${DISABLE_ANONYMOUS_TRACKING}
       - COMFYUI_URL=${COMFYUI_URL}
       - COMFYUI_WORKFLOW=${COMFYUI_WORKFLOW}
@@ -40,10 +70,12 @@ services:
       - OPEN_WEBUI_IMAGE_API_KEY=${OPEN_WEBUI_IMAGE_API_KEY}
 
   production-gpu:
-    # image: ghcr.io/presenton/presenton:latest
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -53,7 +85,7 @@ services:
               capabilities: [gpu]
     ports:
       # You can replace 5000 with any other port number of your choice to run Presenton on a different port number.
-      - "5000:80"
+      - "${HOST_PORT:-5000}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
@@ -79,7 +111,7 @@ services:
       - TOOL_CALLS=${TOOL_CALLS}
       - DISABLE_THINKING=${DISABLE_THINKING}
       - WEB_GROUNDING=${WEB_GROUNDING}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://koho:koho@postgres:5432/koho_decks}
       - DISABLE_ANONYMOUS_TRACKING=${DISABLE_ANONYMOUS_TRACKING}
       - COMFYUI_URL=${COMFYUI_URL}
       - COMFYUI_WORKFLOW=${COMFYUI_WORKFLOW}
@@ -90,8 +122,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
-      - "5000:80"
+      - "${HOST_PORT:-5000}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
@@ -118,7 +153,7 @@ services:
       - TOOL_CALLS=${TOOL_CALLS}
       - DISABLE_THINKING=${DISABLE_THINKING}
       - WEB_GROUNDING=${WEB_GROUNDING}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://koho:koho@postgres:5432/koho_decks}
       - DISABLE_ANONYMOUS_TRACKING=${DISABLE_ANONYMOUS_TRACKING}
       - COMFYUI_URL=${COMFYUI_URL}
       - COMFYUI_WORKFLOW=${COMFYUI_WORKFLOW}
@@ -129,6 +164,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -137,7 +175,7 @@ services:
               count: 1
               capabilities: [gpu]
     ports:
-      - "5000:80"
+      - "${HOST_PORT:-5000}:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
@@ -164,9 +202,13 @@ services:
       - TOOL_CALLS=${TOOL_CALLS}
       - DISABLE_THINKING=${DISABLE_THINKING}
       - WEB_GROUNDING=${WEB_GROUNDING}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://koho:koho@postgres:5432/koho_decks}
       - DISABLE_ANONYMOUS_TRACKING=${DISABLE_ANONYMOUS_TRACKING}
       - COMFYUI_URL=${COMFYUI_URL}
       - COMFYUI_WORKFLOW=${COMFYUI_WORKFLOW}
       - OPEN_WEBUI_IMAGE_URL=${OPEN_WEBUI_IMAGE_URL}
       - OPEN_WEBUI_IMAGE_API_KEY=${OPEN_WEBUI_IMAGE_API_KEY}
+
+volumes:
+  koho_decks_pg_data:
+    name: koho_decks_pg_data
