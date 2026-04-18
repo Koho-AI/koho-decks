@@ -82,9 +82,16 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       fontFamily: {
-        syne: ["var(--font-syne)"],
-        unbounded: ["var(--font-unbounded)"],
-        inter: ["var(--font-inter)"],
+        // Koho V3: Manrope is the brand display + body font.
+        // The legacy syne/unbounded/inter classes throughout Presenton
+        // are remapped to Manrope so the app reads as Koho without
+        // touching every component className.
+        sans: ["var(--font-manrope)", "Manrope", "system-ui", "sans-serif"],
+        manrope: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "monospace"],
+        syne: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        unbounded: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        inter: ["var(--font-manrope)", "Manrope", "sans-serif"],
       },
     },
   },
