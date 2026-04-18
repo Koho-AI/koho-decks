@@ -14,11 +14,14 @@ from models.sql.async_presentation_generation_status import (
 )
 from models.sql.image_asset import ImageAsset
 from models.sql.key_value import KeyValueSqlModel
+from models.sql.membership import MembershipModel
 from models.sql.ollama_pull_status import OllamaPullStatus
+from models.sql.organisation import OrganisationModel
 from models.sql.presentation import PresentationModel
 from models.sql.slide import SlideModel
 from models.sql.presentation_layout_code import PresentationLayoutCodeModel
 from models.sql.template import TemplateModel
+from models.sql.user import UserModel
 from models.sql.webhook_subscription import WebhookSubscription
 from utils.db_utils import get_database_url_and_connect_args, get_pool_kwargs
 
@@ -70,6 +73,9 @@ async def create_db_and_tables():
                     TemplateModel.__table__,
                     WebhookSubscription.__table__,
                     AsyncPresentationGenerationTaskModel.__table__,
+                    UserModel.__table__,
+                    OrganisationModel.__table__,
+                    MembershipModel.__table__,
                 ],
             )
         )

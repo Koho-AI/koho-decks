@@ -24,6 +24,9 @@ from models.sql.presentation_layout_code import (  # noqa: F401, E402
 )
 from models.sql.slide import SlideModel  # noqa: F401, E402
 from models.sql.template import TemplateModel  # noqa: F401, E402
+from models.sql.user import UserModel  # noqa: F401, E402
+from models.sql.organisation import OrganisationModel  # noqa: F401, E402
+from models.sql.membership import MembershipModel  # noqa: F401, E402
 from models.sql.webhook_subscription import WebhookSubscription  # noqa: F401, E402
 
 alembic_config = context.config

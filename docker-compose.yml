@@ -44,6 +44,11 @@ services:
       - MIGRATE_DATABASE_ON_STARTUP=true
       # Default to the in-network Postgres unless the user pins a different DATABASE_URL in .env
       - DATABASE_URL=${DATABASE_URL:-postgresql://koho:koho@postgres:5432/koho_decks}
+      # Phase 3 — NextAuth session + Google SSO
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=${AUTH_URL}
+      - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
+      - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 import uuid
-from sqlalchemy import JSON, Column, DateTime, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, String
 from sqlmodel import Boolean, Field, SQLModel
 
 from models.presentation_layout import PresentationLayoutModel
@@ -42,6 +42,22 @@ class PresentationModel(SQLModel, table=True):
     include_table_of_contents: bool = Field(sa_column=Column(Boolean), default=False)
     include_title_slide: bool = Field(sa_column=Column(Boolean), default=True)
     web_search: bool = Field(sa_column=Column(Boolean), default=False)
+    # Phase 3 — ownership + tenancy. Nullable so legacy rows (pre-auth)
+    # don't break existing queries; new rows should always set both.
+    owner_user_id: Optional[uuid.UUID] = Field(
+        sa_column=Column(
+            ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        ),
+        default=None,
+    )
+    organisation_id: Optional[uuid.UUID] = Field(
+        sa_column=Column(
+            ForeignKey("organisations.id", ondelete="CASCADE"),
+            nullable=True,
+            index=True,
+        ),
+        default=None,
+    )
 
     def get_new_presentation(self):
         return PresentationModel(
