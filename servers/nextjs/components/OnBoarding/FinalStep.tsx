@@ -21,9 +21,9 @@ const FinalStep = () => {
                 <img src="/final_onboarding.png" alt="presenton" className='w-[118px] h-[98px]  object-contain' />
                 <h1 className='text-black text-[30px] font-normal font-unbounded py-2.5'>Welcome on board!</h1>
                 <p className='text-[#000000CC] text-xl font-normal font-syne'>Your AI workspace is ready. Let’s create your first presentation.</p>
-                <button onClick={handleGoToUpload} className='bg-[#7C51F8] px-[23px] mt-14 py-[15px]  rounded-[70px] text-white text-lg font-syne font-semibold'>My First Presentation</button>
+                <button onClick={handleGoToUpload} className='bg-[#00C278] px-[23px] mt-14 py-[15px]  rounded-[70px] text-white text-lg font-syne font-semibold'>My First Presentation</button>
             </div>
-            <button onClick={handleGoToDashboard} className='absolute bottom-20 text-[#7A5AF8] flex items-center gap-2 right-10  text-xs font-normal font-syne'>Go to your dashboard <ArrowRight className='w-4 h-4 text-[#7A5AF8]' /></button>
+            <button onClick={handleGoToDashboard} className='absolute bottom-20 text-[#00C278] flex items-center gap-2 right-10  text-xs font-normal font-syne'>Go to your dashboard <ArrowRight className='w-4 h-4 text-[#00C278]' /></button>
         </div>
     )
 }

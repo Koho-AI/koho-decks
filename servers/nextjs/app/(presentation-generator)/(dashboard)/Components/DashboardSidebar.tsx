@@ -57,7 +57,7 @@ const DashboardSidebar = () => {
                             aria-label="Dashboard"
                             title="Dashboard"
                         >
-                            <LayoutDashboard className={["h-4 w-4", pathname === "/dashboard" ? "text-[#5146E5]" : "text-slate-600"].join(" ")} />
+                            <LayoutDashboard className={["h-4 w-4", pathname === "/dashboard" ? "text-[#00C278]" : "text-slate-600"].join(" ")} />
                             <span className="text-[11px] text-slate-800">Dashboard</span>
                         </Link>
                         <Link
@@ -71,7 +71,7 @@ const DashboardSidebar = () => {
                             title="Templates"
                         >
                             <div className="flex flex-col cursor-pointer tex-center items-center gap-2  transition-colors">
-                                <Star className={`h-4 w-4 ${pathname === "/templates" ? "text-[#5146E5]" : "text-slate-600"}`} />
+                                <Star className={`h-4 w-4 ${pathname === "/templates" ? "text-[#00C278]" : "text-slate-600"}`} />
                                 <span className="text-[11px] text-slate-800">Templates</span>
                             </div>
                         </Link>
@@ -86,7 +86,7 @@ const DashboardSidebar = () => {
                             title="Theme"
                         >
                             <div className="flex flex-col cursor-pointer tex-center items-center gap-2  transition-colors">
-                                <Palette className={`h-4 w-4 ${pathname === "/theme" ? "text-[#5146E5]" : "text-slate-600"}`} />
+                                <Palette className={`h-4 w-4 ${pathname === "/theme" ? "text-[#00C278]" : "text-slate-600"}`} />
                                 <span className="text-[11px] text-slate-800">Themes</span>
                             </div>
                         </Link>
@@ -110,7 +110,7 @@ const DashboardSidebar = () => {
                             aria-label={itemLabel}
                             title={itemLabel}
                         >
-                            <Icon className={["h-4 w-4", isActive ? "text-[#5146E5]" : "text-slate-600"].join(" ")} />
+                            <Icon className={["h-4 w-4", isActive ? "text-[#00C278]" : "text-slate-600"].join(" ")} />
                             <span className="text-[11px] text-slate-800">{itemLabel}</span>
                         </Link>
                     );

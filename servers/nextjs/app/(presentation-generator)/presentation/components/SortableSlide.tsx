@@ -30,7 +30,7 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: Sor
         transition,
         opacity: isDragging ? 0.5 : 1,
         backgroundColor: `var(--card-color, #ffffff)`,
-        borderColor: selectedSlide === index ? `#5141e5` : `var(--stroke, #e5e7eb)`
+        borderColor: selectedSlide === index ? `#00C278` : `var(--stroke, #e5e7eb)`
     };
 
     const handleClick = (e: React.MouseEvent) => {
@@ -55,7 +55,7 @@ export function SortableSlide({ slide, index, selectedSlide, onSlideClick }: Sor
             {...attributes}
             {...listeners}
             onClick={handleClick}
-            className={` cursor-pointer border relative  p-1    rounded-[12px] transition-all duration-200 ${selectedSlide === index ? ' border-[#BDB4FE]' : 'border-[#EDEEEF]'
+            className={` cursor-pointer border relative  p-1    rounded-[12px] transition-all duration-200 ${selectedSlide === index ? ' border-[#7FE5BE]' : 'border-[#EDEEEF]'
                 }`}
         >
 

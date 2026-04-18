@@ -142,7 +142,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
             id="presentation-slides-wrapper"
             style={{
               background: "rgba(255, 255, 255, 0.10)",
-              boxShadow: "0 0 20.01px 0 rgba(122, 90, 248, 0.16) inset",
+              boxShadow: "0 0 20.01px 0 rgba(0, 194, 120, 0.16) inset",
             }}
             className="p-6 rounded-[20px] flex flex-col items-center overflow-hidden justify-center  border border-[#EDECEC] "
           >

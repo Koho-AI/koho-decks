@@ -197,7 +197,7 @@ const LayoutPreview = () => {
                 style={{
                     height: "341px",
                     borderRadius: '1440px',
-                    background: 'radial-gradient(5.92% 104.69% at 50% 100%, rgba(122, 90, 248, 0.00) 0%, rgba(255, 255, 255, 0.00) 100%), radial-gradient(50% 50% at 50% 50%, rgba(122, 90, 248, 0.80) 0%, rgba(122, 90, 248, 0.00) 100%)',
+                    background: 'radial-gradient(5.92% 104.69% at 50% 100%, rgba(0, 194, 120, 0.00) 0%, rgba(255, 255, 255, 0.00) 100%), radial-gradient(50% 50% at 50% 50%, rgba(0, 194, 120, 0.80) 0%, rgba(0, 194, 120, 0.00) 100%)',
                 }}
             />
             <div className="sticky top-0 right-0 z-50 py-[28px] px-6   backdrop-blur ">
@@ -216,7 +216,7 @@ const LayoutPreview = () => {
                             aria-label="Create new template"
                             style={{
                                 borderRadius: "48px",
-                                background: "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
+                                background: "linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)",
                             }}
                         >
                             <span className="hidden md:inline">New Template</span>
@@ -233,8 +233,8 @@ const LayoutPreview = () => {
                     <button className='px-5  py-2 text-xs font-medium text-[#3A3A3A] rounded-[70px]'
                         onClick={() => setTab('custom')}
                         style={{
-                            background: tab === 'custom' ? '#F4F3FF' : 'transparent',
-                            color: tab === 'custom' ? '#5146E5' : '#3A3A3A'
+                            background: tab === 'custom' ? '#E6FBF1' : 'transparent',
+                            color: tab === 'custom' ? '#00C278' : '#3A3A3A'
                         }}
                     >Custom</button>
                     <svg xmlns="http://www.w3.org/2000/svg" className='mx-1' width="2" height="17" viewBox="0 0 2 17" fill="none">
@@ -243,8 +243,8 @@ const LayoutPreview = () => {
                     <button className='px-5  py-2 text-xs font-medium text-[#3A3A3A] rounded-[70px]'
                         onClick={() => setTab('default')}
                         style={{
-                            background: tab === 'default' ? '#F4F3FF' : 'transparent',
-                            color: tab === 'default' ? '#5146E5' : '#3A3A3A'
+                            background: tab === 'default' ? '#E6FBF1' : 'transparent',
+                            color: tab === 'default' ? '#00C278' : '#3A3A3A'
                         }}
                     >Built-in</button>
                 </div>

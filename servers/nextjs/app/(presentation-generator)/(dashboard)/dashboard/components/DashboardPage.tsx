@@ -63,7 +63,7 @@ const DashboardPage: React.FC = () => {
               aria-label="Create new presentation"
               style={{
                 borderRadius: "48px",
-                background: "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
+                background: "linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)",
               }}
             >
 
@@ -78,7 +78,7 @@ const DashboardPage: React.FC = () => {
                 aria-label="Create new themes"
                 style={{
                   borderRadius: "48px",
-                  background: "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
+                  background: "linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)",
                 }}
               >
                 <span className="hidden md:inline">New Themes</span>
@@ -101,7 +101,7 @@ const DashboardPage: React.FC = () => {
         style={{
           height: "341px",
           borderRadius: '1440px',
-          background: 'radial-gradient(5.92% 104.69% at 50% 100%, rgba(122, 90, 248, 0.00) 0%, rgba(255, 255, 255, 0.00) 100%), radial-gradient(50% 50% at 50% 50%, rgba(122, 90, 248, 0.80) 0%, rgba(122, 90, 248, 0.00) 100%)',
+          background: 'radial-gradient(5.92% 104.69% at 50% 100%, rgba(0, 194, 120, 0.00) 0%, rgba(255, 255, 255, 0.00) 100%), radial-gradient(50% 50% at 50% 50%, rgba(0, 194, 120, 0.80) 0%, rgba(0, 194, 120, 0.00) 100%)',
         }}
       />
     </div>

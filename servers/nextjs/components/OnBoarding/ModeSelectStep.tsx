@@ -27,7 +27,7 @@ const ModeSelectStep = ({ setStep, setSelectedMode }: { setStep: (step: number) 
                             <div className='flex items-start gap-2 relative '>
 
                                 <h3 className='text-black text-[18px] font-medium font-syne'>Koho Decks</h3>
-                                <p className='bg-[#F4F3FF] px-3 py-1.5 rounded-[30px] text-[#7A5AF8] text-[9px] absolute left-[95px] top-[-10px]'>PPTX</p>
+                                <p className='bg-[#E6FBF1] px-3 py-1.5 rounded-[30px] text-[#00C278] text-[9px] absolute left-[95px] top-[-10px]'>PPTX</p>
                             </div>
                             <p className='text-[#999999] text-[14px] font-normal font-syne'>Optimized for fast, structured slide generation.</p>
                         </div>
@@ -41,7 +41,7 @@ const ModeSelectStep = ({ setStep, setSelectedMode }: { setStep: (step: number) 
                     //     setStep(2)
                     // }}
                     className='border font-syne border-[#EDEEEF]  cursor-not-allowed rounded-[11px] p-3  flex items-center  justify-between gap-6  relative'>
-                    <p className='text-black absolute top-1/2 -translate-y-1/2 right-14 flex items-center justify-center text-[14px] font-normal bg-[#F4F3FF] px-3 py-1.5 rounded-[30px]'>Coming soon</p>
+                    <p className='text-black absolute top-1/2 -translate-y-1/2 right-14 flex items-center justify-center text-[14px] font-normal bg-[#E6FBF1] px-3 py-1.5 rounded-[30px]'>Coming soon</p>
 
                     <div className='flex items-center gap-6'>
                         <div className='rounded-[4px] bg-[#FFF6ED]  p-[12px] w-[58px] h-[58px] flex items-center justify-center'>

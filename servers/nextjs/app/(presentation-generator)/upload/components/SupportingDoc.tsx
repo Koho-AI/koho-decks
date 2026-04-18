@@ -155,7 +155,7 @@ const SupportingDoc = ({
             </div>
 
             <label
-                className={`mt-1 block cursor-pointer rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${isDragging ? 'border-[#5146E5] bg-[#5146E5]/5' : 'border-gray-200 hover:border-[#5146E5]'}`}
+                className={`mt-1 block cursor-pointer rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${isDragging ? 'border-[#00C278] bg-[#00C278]/5' : 'border-gray-200 hover:border-[#00C278]'}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -169,9 +169,9 @@ const SupportingDoc = ({
                     data-testid="file-upload-input"
                 />
                 <div className="flex flex-col items-center gap-2">
-                    <Paperclip className="h-6 w-6 text-[#5146E5]" />
+                    <Paperclip className="h-6 w-6 text-[#00C278]" />
                     <p className="text-sm font-medium text-gray-800 font-syne">
-                        Drag and drop PDF, TXT, PPTX, DOCX, or <span className="text-[#5146E5]">click to browse</span>
+                        Drag and drop PDF, TXT, PPTX, DOCX, or <span className="text-[#00C278]">click to browse</span>
                     </p>
                 </div>
             </label>

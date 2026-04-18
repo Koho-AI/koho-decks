@@ -69,7 +69,7 @@ const SlideCountSelect: React.FC<{
     return (
         <Select value={value || ""} onValueChange={onValueChange} name="slides">
             <SelectTrigger
-                className="w-[140px]  font-instrument_sans font-medium bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-[#5146E5]/30 flex items-center gap-2 h-10 rounded-xl px-3 ring-1 ring-inset ring-slate-200 shadow-sm"
+                className="w-[140px]  font-instrument_sans font-medium bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-[#00C278]/30 flex items-center gap-2 h-10 rounded-xl px-3 ring-1 ring-inset ring-slate-200 shadow-sm"
                 data-testid="slides-select"
             >
                 <div className="flex items-center gap-2.5"><GalleryVertical className="w-4 h-4" /> <SelectValue placeholder="Select Slides" /></div>
@@ -255,7 +255,7 @@ export function ConfigurationSelects({
                     title="Advanced settings"
                     type="button"
                     onClick={() => handleOpenAdvancedChange(true)}
-                    className="ml-auto flex items-center gap-2 text-sm bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-[#5146E5]/30 h-10 rounded-xl px-3 ring-1 ring-inset ring-slate-200 shadow-sm font-instrument_sans font-medium"
+                    className="ml-auto flex items-center gap-2 text-sm bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-[#00C278]/30 h-10 rounded-xl px-3 ring-1 ring-inset ring-slate-200 shadow-sm font-instrument_sans font-medium"
                     data-testid="advanced-settings-button"
                 >
                     <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -361,7 +361,7 @@ export function ConfigurationSelects({
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => handleOpenAdvancedChange(false)}>Cancel</Button>
-                        <Button onClick={handleSaveAdvanced} className="bg-[#5141e5] text-white hover:bg-[#5141e5]/90">Save</Button>
+                        <Button onClick={handleSaveAdvanced} className="bg-[#00C278] text-white hover:bg-[#00C278]/90">Save</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

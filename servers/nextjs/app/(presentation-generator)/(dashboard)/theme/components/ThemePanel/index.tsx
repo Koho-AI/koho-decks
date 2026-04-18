@@ -656,7 +656,7 @@ const ThemePanel: React.FC = () => {
         <div
           className={`p-3 rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer group
             ${isFontUploading
-              ? 'bg-[#F8F7FF] border-[#7A5AF8]'
+              ? 'bg-[#F8F7FF] border-[#00C278]'
               : 'bg-[#F9FAFB] border-[#E0E0E0] '
             }`}
           onClick={() => {
@@ -670,23 +670,23 @@ const ThemePanel: React.FC = () => {
           {isFontUploading ? (
             <div className='flex items-center gap-3'>
               <div className='w-10 h-10 rounded-lg bg-[#EBE9FE] flex items-center justify-center'>
-                <Loader2 className='w-5 h-5 text-[#7A5AF8] animate-spin' />
+                <Loader2 className='w-5 h-5 text-[#00C278] animate-spin' />
               </div>
               <div className='flex-1'>
-                <p className='text-sm font-medium text-[#7A5AF8]'>Uploading font...</p>
+                <p className='text-sm font-medium text-[#00C278]'>Uploading font...</p>
                 <p className='text-xs text-[#888]'>Please wait</p>
               </div>
             </div>
           ) : (
             <div className='flex items-center gap-3'>
               <div className='w-10 h-10 rounded-lg bg-[#EBE9FE] flex items-center justify-center group-hover:bg-[#DDD8FD] transition-colors'>
-                <Plus className='w-5 h-5 text-[#7A5AF8]' />
+                <Plus className='w-5 h-5 text-[#00C278]' />
               </div>
               <div className='flex-1'>
                 <p className='text-sm font-medium text-[#151515]'>Upload Font File</p>
                 <p className='text-xs text-[#888]'>.ttf, .otf, .woff, .woff2</p>
               </div>
-              <ChevronRight className='w-4 h-4 text-[#999] group-hover:text-[#7A5AF8] transition-colors' />
+              <ChevronRight className='w-4 h-4 text-[#999] group-hover:text-[#00C278] transition-colors' />
             </div>
           )}
         </div>
@@ -803,7 +803,7 @@ const ThemePanel: React.FC = () => {
           ) : (
             <>
               <div className='w-[42px] h-[42px] mx-auto flex justify-center items-center rounded-full bg-[#EBE9FE]' >
-                <div className='w-[22px] h-[22px] rounded-full bg-[#7A5AF8] flex items-center justify-center text-white'>
+                <div className='w-[22px] h-[22px] rounded-full bg-[#00C278] flex items-center justify-center text-white'>
                   <Plus className='w-3 h-3' />
                 </div>
               </div>
@@ -857,7 +857,7 @@ const ThemePanel: React.FC = () => {
           aria-label="Create new theme"
           style={{
             borderRadius: "48px",
-            background: "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
+            background: "linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)",
           }}
         >
 
@@ -871,7 +871,7 @@ const ThemePanel: React.FC = () => {
         <button className='px-5  py-2 text-xs font-medium text-[#3A3A3A] rounded-[70px]'
           onClick={() => setTab('custom')}
           style={{
-            background: tab === 'custom' ? 'linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)' : 'transparent'
+            background: tab === 'custom' ? 'linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)' : 'transparent'
           }}
         >Custom</button>
         <svg xmlns="http://www.w3.org/2000/svg" className='mx-1' width="2" height="17" viewBox="0 0 2 17" fill="none">
@@ -880,7 +880,7 @@ const ThemePanel: React.FC = () => {
         <button className='px-5  py-2 text-xs font-medium text-[#3A3A3A] rounded-[70px]'
           onClick={() => setTab('default')}
           style={{
-            background: tab === 'default' ? 'linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)' : 'transparent'
+            background: tab === 'default' ? 'linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)' : 'transparent'
           }}
         >Built-in</button>
       </div>
@@ -977,7 +977,7 @@ const ThemePanel: React.FC = () => {
                           }
                         }}
                         style={{
-                          background: 'linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)'
+                          background: 'linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)'
                         }}
                       >
                         {currentStep === 1 ? 'Generate theme palette' : currentStep === 2 ? 'Continue to Fonts' : currentStep === 3 ? 'Continue to Design' : 'Save as Custom Theme'}

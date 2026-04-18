@@ -241,7 +241,7 @@ const UploadPage = () => {
         <div className="p-4 md:p-6">
           <Button
             onClick={handleGeneratePresentation}
-            className="w-full rounded-[28px] flex items-center justify-center py-5 bg-[#5141e5] text-white font-syne font-semibold text-lg hover:bg-[#5141e5]/85 focus-visible:ring-2 focus-visible:ring-[#5141e5]/40"
+            className="w-full rounded-[28px] flex items-center justify-center py-5 bg-[#00C278] text-white font-syne font-semibold text-lg hover:bg-[#00C278]/85 focus-visible:ring-2 focus-visible:ring-[#00C278]/40"
             data-testid="next-button"
           >
             <span>Generate Presentation</span>

@@ -53,7 +53,7 @@ const GenerateButton: React.FC<GenerateButtonProps> = ({
       }}
       className=" w-full flex items-center gap-0.5 rounded-[58px] text-sm py-3 px-5 font-instrument_sans font-semibold  text-[#101323] disabled:opacity-50 disabled:cursor-not-allowed font-syne"
       style={{
-        background: "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
+        background: "linear-gradient(270deg, #CFF5E3 2.4%, #B8F0D6 27.88%, #D9F5E6 69.23%, #EEFAF1 100%)",
       }}
     >
 

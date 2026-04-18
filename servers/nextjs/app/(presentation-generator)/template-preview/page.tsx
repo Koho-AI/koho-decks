@@ -189,7 +189,7 @@ const LayoutPreview = () => {
             <h2 className="text-xl font-semibold text-gray-800 ">
               My Custom Templates
             </h2>
-            <a href="/custom-template" className="text-sm flex font-bold font-inter items-center justify-center gap-2  bg-[#5146E5] text-white px-4 py-2 rounded-md">
+            <a href="/custom-template" className="text-sm flex font-bold font-inter items-center justify-center gap-2  bg-[#00C278] text-white px-4 py-2 rounded-md">
               <Plus className="w-4 h-4" /> Create new template
             </a>
           </div>
