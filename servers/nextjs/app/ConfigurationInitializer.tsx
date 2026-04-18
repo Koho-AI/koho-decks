@@ -115,11 +115,9 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 text-center">
             {/* Logo/Branding */}
             <div className="mb-6">
-              <img
-                src="/Logo.png"
-                alt="PresentOn"
-                className="h-12 mx-auto mb-4 opacity-90"
-              />
+              <div className="flex justify-center mb-4 opacity-90">
+                <KohoDecksWordmark mode="light" size="md" />
+              </div>
               <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto rounded-full"></div>
             </div>
 

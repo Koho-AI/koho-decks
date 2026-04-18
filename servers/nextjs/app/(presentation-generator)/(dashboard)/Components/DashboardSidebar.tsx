@@ -5,6 +5,7 @@ import { LayoutDashboard, Star, Brain, Settings, Palette } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import KohoDecksWordmark from "@/components/KohoDecksWordmark";
 
 
 
@@ -38,8 +39,8 @@ const DashboardSidebar = () => {
             <div>
 
                 <div onClick={() => router.push("/dashboard")} className="flex items-center  pb-6 border-b border-slate-200/60   gap-2    ">
-                    <div className="rounded-full cursor-pointer p-1 flex justify-center items-center mx-auto">
-                        <img src="/koho/logos/koho-decks-dark.svg" alt="Koho Decks" className="h-[40px] object-contain w-full" />
+                    <div className="cursor-pointer flex justify-center items-center mx-auto">
+                        <KohoDecksWordmark mode="light" size="sm" />
                     </div>
                 </div>
                 <nav className="pt-6 font-syne" aria-label="Dashboard sections">

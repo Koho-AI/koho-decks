@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Syne, Unbounded } from "next/font/google";
+import { Syne, Unbounded, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
@@ -26,6 +26,19 @@ const unbounded = Unbounded({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-unbounded",
+});
+
+// Koho V3 brand fonts
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-manrope",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-jetbrains-mono",
 });
 
 
@@ -80,7 +93,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${unbounded.variable} ${syne.variable} antialiased`}
+        className={`${inter.variable} ${unbounded.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <Providers>
           <MixpanelInitializer>
