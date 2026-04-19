@@ -24,6 +24,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.access import DeckRole, resolve_deck_access
 from api.auth_context import AuthContext
 from api.deps import get_current_user_strict
 from models.sql.deck_collaborator import (
@@ -35,6 +36,7 @@ from models.sql.invitation import InvitationModel
 from models.sql.presentation import PresentationModel
 from models.sql.user import UserModel
 from services.database import get_async_session
+from services.email import invitation_email, send_email
 
 
 SHARING_ROUTER = APIRouter(
@@ -160,6 +162,16 @@ async def invite_collaborator(
             sql_session.add(collab)
         await sql_session.commit()
         await sql_session.refresh(collab)
+        await send_email(
+            **invitation_email(
+                to_email=existing_user.email,
+                deck_title=deck.title,
+                inviter_name=ctx.name,
+                inviter_email=ctx.email,
+                role=collab.role,
+                presentation_id=str(deck.id),
+            )
+        )
         return CollaboratorResponse(
             id=collab.id,
             kind="collaborator",
@@ -199,9 +211,20 @@ async def invite_collaborator(
     await sql_session.commit()
     await sql_session.refresh(invite)
 
-    # Email sending is Phase 4d — for now, the row is persisted; the
-    # frontend shows the pending invitation in the collaborators list
-    # and (later) a "Copy invitation link" affordance.
+    # Best-effort email notification — if SMTP isn't configured, the
+    # row still persists and the collaborator list still shows the
+    # pending invite, so this can't block the invite flow.
+    await send_email(
+        **invitation_email(
+            to_email=invite.email,
+            deck_title=deck.title,
+            inviter_name=ctx.name,
+            inviter_email=ctx.email,
+            role=invite.role,
+            presentation_id=str(deck.id),
+        )
+    )
+
     return CollaboratorResponse(
         id=invite.id,
         kind="invitation",
@@ -331,6 +354,24 @@ class SharedDeckSummary(BaseModel):
     role: str
     owner_email: Optional[str]
     shared_at: datetime
+
+
+class MyRoleResponse(BaseModel):
+    presentation_id: uuid.UUID
+    role: str  # "owner" | "editor" | "viewer" | "none"
+
+
+@SHARING_ROUTER.get(
+    "/my-role/{presentation_id}", response_model=MyRoleResponse
+)
+async def my_role(
+    presentation_id: uuid.UUID,
+    sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
+) -> MyRoleResponse:
+    access = await resolve_deck_access(presentation_id, sql_session, ctx)
+    role = access.role.value if access else DeckRole.NONE.value
+    return MyRoleResponse(presentation_id=presentation_id, role=role)
 
 
 @SHARING_ROUTER.get("/shared-with-me", response_model=List[SharedDeckSummary])

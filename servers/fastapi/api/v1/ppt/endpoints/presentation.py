@@ -42,6 +42,7 @@ from utils.llm_calls.generate_presentation_outlines import generate_ppt_outline
 from models.sql.slide import SlideModel
 from models.sse_response import SSECompleteResponse, SSEErrorResponse, SSEResponse
 
+from api.access import check_deck_access
 from api.auth_context import AuthContext
 from api.deps import get_current_user_strict
 from services.database import get_async_session
@@ -117,31 +118,37 @@ async def get_all_presentations(
 
 @PRESENTATION_ROUTER.get("/{id}", response_model=PresentationWithSlides)
 async def get_presentation(
-    id: uuid.UUID, sql_session: AsyncSession = Depends(get_async_session)
+    id: uuid.UUID,
+    sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
 ):
-    presentation = await sql_session.get(PresentationModel, id)
-    if not presentation:
-        raise HTTPException(404, "Presentation not found")
+    access = await check_deck_access(id, sql_session, ctx)
     slides = await sql_session.scalars(
         select(SlideModel)
         .where(SlideModel.presentation == id)
         .order_by(SlideModel.index)
     )
     return PresentationWithSlides(
-        **presentation.model_dump(),
+        **access.deck.model_dump(),
         slides=slides,
     )
 
 
 @PRESENTATION_ROUTER.delete("/{id}", status_code=204)
 async def delete_presentation(
-    id: uuid.UUID, sql_session: AsyncSession = Depends(get_async_session)
+    id: uuid.UUID,
+    sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
 ):
-    presentation = await sql_session.get(PresentationModel, id)
-    if not presentation:
-        raise HTTPException(404, "Presentation not found")
+    # Only the deck owner may delete (write-level; viewer/editor not enough).
+    access = await check_deck_access(id, sql_session, ctx, write=True)
+    from api.access import DeckRole
 
-    await sql_session.delete(presentation)
+    if access.role != DeckRole.OWNER:
+        raise HTTPException(
+            403, "Only the deck owner can delete this presentation"
+        )
+    await sql_session.delete(access.deck)
     await sql_session.commit()
 
 
@@ -394,10 +401,10 @@ async def update_presentation(
     theme: Annotated[Optional[dict], Body()] = None,
     slides: Annotated[Optional[List[SlideModel]], Body()] = None,
     sql_session: AsyncSession = Depends(get_async_session),
+    ctx: AuthContext = Depends(get_current_user_strict),
 ):
-    presentation = await sql_session.get(PresentationModel, id)
-    if not presentation:
-        raise HTTPException(status_code=404, detail="Presentation not found")
+    access = await check_deck_access(id, sql_session, ctx, write=True)
+    presentation = access.deck
 
     presentation_update_dict = {}
     request_body = await request.json()

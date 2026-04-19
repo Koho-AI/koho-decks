@@ -6,6 +6,7 @@ import { DashboardApi } from "@/app/(presentation-generator)/services/api/dashbo
 import { PresentationGrid } from "@/app/(presentation-generator)/(dashboard)/dashboard/components/PresentationGrid";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import SharedWithMeSection from "@/components/SharedWithMeSection";
 
 
 
@@ -96,6 +97,7 @@ const DashboardPage: React.FC = () => {
         error={error}
         onPresentationDeleted={removePresentation}
       />
+      <SharedWithMeSection />
       <div
         className='fixed z-0 bottom-[-16.5rem] left-0 w-full h-full'
         style={{

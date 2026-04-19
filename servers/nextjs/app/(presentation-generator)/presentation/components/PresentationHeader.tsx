@@ -38,6 +38,9 @@ import { DEFAULT_THEMES } from "../../(dashboard)/theme/components/ThemePanel/co
 import ThemeApi from "../../services/api/theme";
 import { Theme } from "../../services/api/types";
 import MarkdownRenderer from "@/components/MarkDownRender";
+import ShareModal from "@/components/ShareModal";
+import ViewerBanner from "@/components/ViewerBanner";
+import { Users } from "lucide-react";
 
 const PresentationHeader = ({
   presentation_id,
@@ -51,6 +54,7 @@ const PresentationHeader = ({
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [themes, setThemes] = useState<Theme[]>([]);
 
   const pathname = usePathname();
@@ -244,13 +248,33 @@ const PresentationHeader = ({
   return (
     <>
       <div className="py-7 sticky top-0 bg-white z-50 mb-[17px]  font-syne flex justify-between items-center">
-        <h2 className="text-lg text-[#101323] font-unbounded "><MarkdownRenderer content={presentationData?.title || "Presentation"} className="mb-0  w-[600px] truncate text-sm text-[#101323] " /></h2>
+        <div className="flex items-center gap-3 min-w-0">
+          <h2 className="text-lg text-[#101323] font-unbounded "><MarkdownRenderer content={presentationData?.title || "Presentation"} className="mb-0  w-[600px] truncate text-sm text-[#101323] " /></h2>
+          <ViewerBanner presentationId={presentation_id} />
+        </div>
         <div className="flex items-center gap-2.5">
 
           {isPresentationSaving && <div className="flex items-center gap-2">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           </div>}
           <ThemeSelector presentation_id={presentation_id} current_theme={presentationData?.theme || {}} themes={themes} />
+
+          <ToolTip content="Share with teammates">
+            <button
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 h-[38px] rounded-[80px] bg-[#F6F6F9] border border-[#EDECEC] text-sm text-[#101323] hover:text-[#00C278] duration-300"
+              aria-label="Share deck"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
+          </ToolTip>
+
+          <ShareModal
+            presentationId={presentation_id}
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+          />
 
           <div className="flex items-center gap-2 bg-[#F6F6F9] px-3.5 h-[38px] border border-[#EDECEC] rounded-[80px]">
 
