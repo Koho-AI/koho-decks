@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import KohoDecksWordmark from "@/components/KohoDecksWordmark";
+import SidebarUserMenu from "@/components/SidebarUserMenu";
 
 
 
@@ -116,7 +117,9 @@ const DashboardSidebar = () => {
                     );
                 })}
 
-
+                <div className="pt-4 mt-2 border-t border-slate-200/60">
+                    <SidebarUserMenu />
+                </div>
 
             </div>
 
