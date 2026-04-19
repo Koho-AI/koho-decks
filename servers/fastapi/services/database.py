@@ -14,6 +14,8 @@ from models.sql.async_presentation_generation_status import (
 )
 from models.sql.image_asset import ImageAsset
 from models.sql.key_value import KeyValueSqlModel
+from models.sql.deck_collaborator import DeckCollaboratorModel
+from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel
 from models.sql.ollama_pull_status import OllamaPullStatus
 from models.sql.organisation import OrganisationModel
@@ -76,6 +78,8 @@ async def create_db_and_tables():
                     UserModel.__table__,
                     OrganisationModel.__table__,
                     MembershipModel.__table__,
+                    DeckCollaboratorModel.__table__,
+                    InvitationModel.__table__,
                 ],
             )
         )

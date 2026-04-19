@@ -10,6 +10,8 @@ from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.auth_context import ANONYMOUS, AuthContext
+from models.sql.deck_collaborator import DeckCollaboratorModel
+from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel, ROLE_MEMBER, ROLE_OWNER
 from models.sql.organisation import OrganisationModel
 from models.sql.user import UserModel
@@ -193,6 +195,39 @@ async def _resolve_auth_context(user_payload: dict) -> AuthContext:
                 user_id=user.id, organisation_id=org.id, role=role
             )
             session.add(membership)
+
+        # Resolve any pending invitations addressed to this email
+        # (Phase 4) — convert each unaccepted Invitation into a
+        # DeckCollaborator. Skips expired ones.
+        pending = (
+            await session.execute(
+                select(InvitationModel).where(
+                    InvitationModel.email == email,
+                    InvitationModel.accepted_at.is_(None),
+                    InvitationModel.expires_at > datetime.now(timezone.utc),
+                )
+            )
+        ).scalars().all()
+        for invite in pending:
+            existing = (
+                await session.execute(
+                    select(DeckCollaboratorModel).where(
+                        DeckCollaboratorModel.presentation_id
+                        == invite.presentation_id,
+                        DeckCollaboratorModel.user_id == user.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing is None:
+                session.add(
+                    DeckCollaboratorModel(
+                        presentation_id=invite.presentation_id,
+                        user_id=user.id,
+                        role=invite.role,
+                        invited_by_user_id=invite.invited_by_user_id,
+                    )
+                )
+            invite.accepted_at = now
 
         await session.commit()
 

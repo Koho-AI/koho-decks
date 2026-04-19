@@ -15,6 +15,7 @@ type Me = {
  */
 export default function SidebarUserMenu() {
   const [me, setMe] = useState<Me | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [csrfToken, setCsrfToken] = useState<string>("");
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -30,8 +31,9 @@ export default function SidebarUserMenu() {
             image: s.user.image ?? null,
           });
         }
+        setLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => setLoaded(true));
     fetch("/api/auth/csrf")
       .then((r) => r.json())
       .then((d) => setCsrfToken(d.csrfToken ?? ""))
@@ -47,7 +49,65 @@ export default function SidebarUserMenu() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  if (!me) return null;
+  // No session: show a compact Sign-in link so the slot is never empty.
+  if (loaded && !me) {
+    return (
+      <a
+        href="/signin"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          padding: "8px 0",
+          color: "#1A2332",
+          fontSize: 11,
+          fontFamily: "var(--font-manrope), Manrope, sans-serif",
+          textDecoration: "none",
+        }}
+      >
+        <span
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "rgba(26,35,50,0.08)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 11,
+            color: "#1A2332",
+          }}
+        >
+          ?
+        </span>
+        Sign in
+      </a>
+    );
+  }
+
+  if (!me) {
+    // Loading placeholder — empty grey circle, keeps the slot visible
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          padding: "8px 0",
+        }}
+      >
+        <span
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "rgba(26,35,50,0.08)",
+          }}
+        />
+      </div>
+    );
+  }
 
   const initials = (me.name || me.email || "?")
     .split(/[\s@.]+/)
