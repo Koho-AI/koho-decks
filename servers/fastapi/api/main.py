@@ -6,6 +6,7 @@ from api.v1.ppt.router import API_V1_PPT_ROUTER
 from api.v1.webhook.router import API_V1_WEBHOOK_ROUTER
 from api.v1.mock.router import API_V1_MOCK_ROUTER
 from api.v1.public.share import PUBLIC_SHARE_ROUTER
+from api.v1.ppt.endpoints.health import HEALTH_ROUTER
 from fastapi import APIRouter as _APIRouter
 
 
@@ -21,6 +22,7 @@ app.include_router(API_V1_MOCK_ROUTER)
 # is reachable through the existing nginx `location /api/v1/` proxy.
 _PUBLIC_V1 = _APIRouter(prefix="/api/v1")
 _PUBLIC_V1.include_router(PUBLIC_SHARE_ROUTER)
+_PUBLIC_V1.include_router(HEALTH_ROUTER)
 app.include_router(_PUBLIC_V1)
 
 # Middlewares

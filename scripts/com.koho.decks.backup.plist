@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase 6 — launchd job for the daily Postgres backup.
+
+  Install with:
+
+      cp scripts/com.koho.decks.backup.plist ~/Library/LaunchAgents/
+      launchctl load ~/Library/LaunchAgents/com.koho.decks.backup.plist
+      launchctl start com.koho.decks.backup     # run once, immediately
+
+  Edit the WorkingDirectory + StandardOutPath if your repo is somewhere
+  other than ~/koho-decks.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.koho.decks.backup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>cd ~/koho-decks &amp;&amp; ./scripts/postgres-backup.sh</string>
+  </array>
+
+  <!-- Run once a day at 03:15 local time. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>15</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/koho-decks-backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/koho-decks-backup.err</string>
+
+  <!-- launchd respawns on failure (exit non-zero or crash). KeepAlive
+       on a periodic job would loop forever, so leave it false. -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
