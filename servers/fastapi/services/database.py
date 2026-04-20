@@ -17,6 +17,10 @@ from models.sql.key_value import KeyValueSqlModel
 from models.sql.deck_collaborator import DeckCollaboratorModel
 from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel
+from models.sql.otp_challenge import OtpChallengeModel
+from models.sql.share_link import ShareLinkModel
+from models.sql.share_view import ShareViewModel
+from models.sql.share_viewer import ShareViewerModel
 from models.sql.ollama_pull_status import OllamaPullStatus
 from models.sql.organisation import OrganisationModel
 from models.sql.presentation import PresentationModel
@@ -80,6 +84,10 @@ async def create_db_and_tables():
                     MembershipModel.__table__,
                     DeckCollaboratorModel.__table__,
                     InvitationModel.__table__,
+                    ShareLinkModel.__table__,
+                    ShareViewerModel.__table__,
+                    ShareViewModel.__table__,
+                    OtpChallengeModel.__table__,
                 ],
             )
         )

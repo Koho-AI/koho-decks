@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Mail, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Globe,
+  Lock,
+  Mail,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type Collaborator = {
   id: string;
@@ -20,6 +29,18 @@ type CollaboratorListResponse = {
   collaborators: Collaborator[];
 };
 
+type ShareLink = {
+  id: string;
+  presentation_id: string;
+  token: string;
+  gate_mode: "open" | "email_otp";
+  created_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  view_count: number;
+  unique_viewers: number;
+};
+
 /**
  * Share modal for internal Koho-team collaboration (Phase 4).
  * External client links land in Phase 5.
@@ -34,17 +55,25 @@ export default function ShareModal({
   onClose: () => void;
 }) {
   const [data, setData] = useState<CollaboratorListResponse | null>(null);
+  const [links, setLinks] = useState<ShareLink[] | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkGateMode, setLinkGateMode] = useState<"open" | "email_otp">(
+    "open"
+  );
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const r = await fetch(
-        `/api/v1/ppt/sharing/collaborators/${presentationId}`
-      );
-      if (r.ok) setData(await r.json());
+      const [collab, ll] = await Promise.all([
+        fetch(`/api/v1/ppt/sharing/collaborators/${presentationId}`),
+        fetch(`/api/v1/ppt/share-links/${presentationId}`),
+      ]);
+      if (collab.ok) setData(await collab.json());
+      if (ll.ok) setLinks(await ll.json());
     } catch {
       // ignored
     }
@@ -93,6 +122,48 @@ export default function ShareModal({
         : `/api/v1/ppt/sharing/invitation/${collab.id}`;
     const r = await fetch(path, { method: "DELETE" });
     if (r.ok) await refresh();
+  };
+
+  const createLink = async () => {
+    if (creatingLink) return;
+    setCreatingLink(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/v1/ppt/share-links", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          presentation_id: presentationId,
+          gate_mode: linkGateMode,
+        }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        setError(body.detail ?? `Failed (${r.status})`);
+      } else {
+        await refresh();
+      }
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  const revokeLink = async (id: string) => {
+    const r = await fetch(`/api/v1/ppt/share-links/${id}`, {
+      method: "DELETE",
+    });
+    if (r.ok) await refresh();
+  };
+
+  const copyLink = async (token: string) => {
+    const url = `${window.location.origin}/view/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedToken(token);
+      setTimeout(() => setCopiedToken((c) => (c === token ? null : c)), 1800);
+    } catch {
+      // ignored
+    }
   };
 
   if (!open) return null;
@@ -312,9 +383,190 @@ export default function ShareModal({
             </div>
           )}
         </div>
+
+        {/* Public client-share links (Phase 5) */}
+        <div
+          style={{
+            marginTop: 22,
+            borderTop: "1px solid rgba(26,35,50,0.08)",
+            paddingTop: 14,
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 13,
+              color: "#5B6A7E",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              margin: "0 0 10px",
+              fontWeight: 500,
+              fontFamily:
+                "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+            }}
+          >
+            Client share links
+          </h3>
+
+          {(links ?? [])
+            .filter((l) => !l.revoked_at)
+            .map((link) => {
+              const url = `${
+                typeof window !== "undefined" ? window.location.origin : ""
+              }/view/${link.token}`;
+              const Icon = link.gate_mode === "open" ? Globe : Lock;
+              const label =
+                link.gate_mode === "open"
+                  ? "Anyone with the link"
+                  : "Email verification";
+              return (
+                <div
+                  key={link.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 12px",
+                    border: "1px solid rgba(26,35,50,0.08)",
+                    borderRadius: 10,
+                    marginBottom: 8,
+                    background: "#FAFBFC",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      background: "#E6FBF1",
+                      color: "#006B43",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon size={15} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#1A2332",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#5B6A7E",
+                        marginTop: 2,
+                        fontFamily:
+                          "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {url}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#5B6A7E",
+                        marginTop: 4,
+                      }}
+                    >
+                      {link.view_count} view{link.view_count === 1 ? "" : "s"}
+                      {link.gate_mode === "email_otp"
+                        ? ` · ${link.unique_viewers} unique`
+                        : ""}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyLink(link.token)}
+                    aria-label="Copy link"
+                    style={iconButtonStyle()}
+                  >
+                    {copiedToken === link.token ? (
+                      <Check size={15} color="#00C278" />
+                    ) : (
+                      <Copy size={15} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => revokeLink(link.id)}
+                    aria-label="Revoke link"
+                    style={{ ...iconButtonStyle(), color: "#B02020" }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              );
+            })}
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={linkGateMode}
+              onChange={(e) =>
+                setLinkGateMode(e.target.value as "open" | "email_otp")
+              }
+              style={{
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(26,35,50,0.12)",
+                fontFamily: "inherit",
+                fontSize: 13,
+                color: "#1A2332",
+                background: "#FFFFFF",
+              }}
+            >
+              <option value="open">Anyone with the link</option>
+              <option value="email_otp">Require email verification</option>
+            </select>
+            <button
+              type="button"
+              onClick={createLink}
+              disabled={creatingLink}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(26,35,50,0.12)",
+                background: "#FFFFFF",
+                color: "#1A2332",
+                cursor: creatingLink ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                fontSize: 13,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Plus size={14} />
+              Create link
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+function iconButtonStyle(): React.CSSProperties {
+  return {
+    width: 32,
+    height: 32,
+    border: "none",
+    background: "transparent",
+    color: "#5B6A7E",
+    cursor: "pointer",
+    borderRadius: 6,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
 }
 
 function Row({
