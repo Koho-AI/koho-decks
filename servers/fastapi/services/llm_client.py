@@ -1,6 +1,7 @@
 import asyncio
 import dirtyjson
 import json
+import os
 from typing import AsyncGenerator, List, Optional, Dict, Any
 from fastapi import HTTPException
 from openai import APIStatusError, AsyncOpenAI, OpenAIError
@@ -414,7 +415,7 @@ class LLMClient:
                 for message in self._get_anthropic_messages(messages)
             ],
             tools=tools,
-            max_tokens=max_tokens or 4000,
+            max_tokens=max_tokens or int(os.getenv("ANTHROPIC_MAX_TOKENS") or 16000),
         )
         text_content = None
         tool_calls: List[AnthropicToolCall] = []
@@ -957,7 +958,7 @@ class LLMClient:
                 message.model_dump()
                 for message in self._get_anthropic_messages(messages)
             ],
-            max_tokens=max_tokens or 4000,
+            max_tokens=max_tokens or int(os.getenv("ANTHROPIC_MAX_TOKENS") or 16000),
             tools=[
                 {
                     "name": "ResponseSchema",
@@ -1332,7 +1333,7 @@ class LLMClient:
                 message.model_dump()
                 for message in self._get_anthropic_messages(messages)
             ],
-            max_tokens=max_tokens or 4000,
+            max_tokens=max_tokens or int(os.getenv("ANTHROPIC_MAX_TOKENS") or 16000),
             tools=tools,
         ) as stream:
             async for event in stream:
@@ -2154,7 +2155,7 @@ class LLMClient:
                 message.model_dump()
                 for message in self._get_anthropic_messages(messages)
             ],
-            max_tokens=max_tokens or 4000,
+            max_tokens=max_tokens or int(os.getenv("ANTHROPIC_MAX_TOKENS") or 16000),
             tools=[
                 {
                     "name": "ResponseSchema",
