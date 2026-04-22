@@ -1,0 +1,26 @@
+# Koho Decks — Caddy vhost.
+#
+# Deployed to /etc/caddy/conf.d/decks.caddy on koho-dev. The top-level
+# /etc/caddy/Caddyfile `import`s every file in conf.d/, so this one
+# lives independently — koban's bootstrap won't touch it, and vice
+# versa.
+#
+# Apply with: just caddy-install-remote
+
+decks.koho.ai {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+	# Large request bodies for image uploads + slide content.
+	request_body {
+		max_size 50MB
+	}
+
+	reverse_proxy localhost:8094 {
+		# Presenton streams generation events; keep connections long-lived.
+		transport http {
+			response_header_timeout 30m
+			read_timeout 30m
+		}
+	}
+}

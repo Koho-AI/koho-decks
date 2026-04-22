@@ -42,19 +42,18 @@ vps-bootstrap-remote:
     echo "  2. Append Caddyfile snippet:  just caddy-install-remote"
     echo "  3. Ask Oliver to add DNS A record: decks.koho.ai -> 142.93.44.235"
 
-# Append the Caddy vhost block to /etc/caddy/Caddyfile and reload.
+# Install the decks Caddy vhost into /etc/caddy/conf.d/ and reload.
+# The top-level Caddyfile on koho-dev imports every file in conf.d/, so
+# this recipe owns only decks.caddy — koban's bootstrap can't clobber it.
 caddy-install-remote:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Appending Caddy block to {{admin_remote}}..."
-    scp deploy/Caddyfile.snippet {{admin_remote}}:/tmp/decks.caddy
+    echo "Installing decks.caddy on {{admin_remote}}..."
+    scp deploy/conf.d/decks.caddy {{admin_remote}}:/tmp/decks.caddy
     ssh {{admin_remote}} '
         set -euo pipefail
-        if sudo grep -q "decks.koho.ai" /etc/caddy/Caddyfile; then
-            echo "decks.koho.ai block already present in /etc/caddy/Caddyfile — skipping append"
-        else
-            sudo tee -a /etc/caddy/Caddyfile < /tmp/decks.caddy
-        fi
+        sudo install -d -m 755 /etc/caddy/conf.d
+        sudo install -m 644 /tmp/decks.caddy /etc/caddy/conf.d/decks.caddy
         sudo caddy validate --config /etc/caddy/Caddyfile
         sudo systemctl reload caddy
         rm /tmp/decks.caddy
