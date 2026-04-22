@@ -88,28 +88,41 @@ def _assert_cookie_session(ctx: AuthContext) -> None:
 
 
 # Origin-header check as a belt-and-braces CSRF defence on top of NextAuth's
-# SameSite=Lax cookie. Accepts any configured origin + any same-host request.
-# Missing Origin is allowed (curl / native clients do not send it).
+# SameSite=Lax cookie. Missing Origin is allowed (curl / native clients do
+# not send it).
 #
-# DECKS_PUBLIC_ORIGINS is the comma-separated allow-list for cross-origin
-# browser requests (e.g. "https://decks.koho.ai"). When unset (dev/test),
-# we fall back to host-header matching, which is enough because browsers
-# always send Origin matching the scheme+host for same-site fetches.
-_ALLOWED_ORIGINS = {
-    o.strip()
-    for o in os.getenv("DECKS_PUBLIC_ORIGINS", "").split(",")
-    if o.strip()
-}
+# Allow-list is derived from two env vars:
+#   - APP_BASE_URL: already set on every deployment (e.g. https://decks.koho.ai),
+#     so this endpoint works out-of-the-box without new config.
+#   - DECKS_PUBLIC_ORIGINS: comma-separated escape hatch for multi-origin
+#     setups (e.g. decks.koho.ai + a staging alias).
+#
+# Host-header fallback is unreliable behind nginx (the /api/v1/ proxy block
+# doesn't always forward Host upstream), so we do not rely on it.
+def _compute_allowed_origins() -> set[str]:
+    origins: set[str] = set()
+    base = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+    if base:
+        origins.add(base)
+    for o in os.getenv("DECKS_PUBLIC_ORIGINS", "").split(","):
+        o = o.strip().rstrip("/")
+        if o:
+            origins.add(o)
+    return origins
+
+
+_ALLOWED_ORIGINS = _compute_allowed_origins()
 
 
 def _assert_same_origin(request: Request) -> None:
     origin = request.headers.get("origin")
     if not origin:
         return
-    if _ALLOWED_ORIGINS and origin in _ALLOWED_ORIGINS:
+    origin = origin.rstrip("/")
+    if origin in _ALLOWED_ORIGINS:
         return
-    host = request.headers.get("host")
-    if host and origin.endswith(f"://{host}"):
+    # Loopback fallback for local dev without APP_BASE_URL set.
+    if not _ALLOWED_ORIGINS and origin.startswith(("http://localhost", "http://127.0.0.1")):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
