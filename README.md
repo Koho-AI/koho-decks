@@ -75,6 +75,63 @@ just health-public     # curl the public health endpoint
 just rollback-remote   # swap koho-decks:previous back to :latest + restart
 ```
 
+## MCP access
+
+The MCP server at `https://decks.koho.ai/mcp` exposes Koho Decks tools to any MCP-compatible client — generate decks, list presentations, manage slides — authenticated as your Koho account.
+
+### Create a personal access token
+
+1. Sign in at `https://decks.koho.ai`
+2. Go to `/settings/tokens` → **New token**
+3. Copy the token (`kohod_<32 hex chars>`) — it is shown exactly once. Store it in your password manager.
+
+### Configure your MCP client
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "koho-decks": {
+      "url": "https://decks.koho.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-token>"
+      }
+    }
+  }
+}
+```
+
+**Claude Code:**
+
+```sh
+claude mcp add koho-decks --url https://decks.koho.ai/mcp --header "Authorization: Bearer <your-token>"
+```
+
+**Cursor:** Open Settings → MCP → Add server. Supply the URL `https://decks.koho.ai/mcp` and add the header `Authorization: Bearer <your-token>`.
+
+### Verify your token
+
+```sh
+export TOKEN=kohod_<your-token>
+curl -sS -X POST \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  https://decks.koho.ai/mcp
+```
+
+A JSON response listing available tools confirms the token is valid.
+
+### Rotate / revoke
+
+Go to `/settings/tokens`, revoke the old token, and create a new one. Update your client config with the replacement.
+
+### Trust model
+
+PATs carry exactly the same permissions as your web session — nothing elevated. If a token is compromised, revoke it immediately and reissue.
+
 ## Roadmap
 
 Phases tracked in `/docs/roadmap.md`:
