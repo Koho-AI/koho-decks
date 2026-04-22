@@ -10,6 +10,11 @@
 # compose override pins the image tag so docker compose picks up whichever
 # image currently wears the `:latest` tag.
 #
+# The systemd unit runs `docker compose up -d --build` — build happens as
+# part of the service start, not as a separate step here. Avoids the
+# classic/BuildKit image-store split where a standalone `compose build`
+# wouldn't make the image visible to the subsequent `compose up`.
+#
 # Concurrency is enforced by the GHA workflow's concurrency group.
 
 set -euo pipefail
@@ -60,9 +65,7 @@ run_health_checks() {
 case "$mode" in
     deploy)
         tag_previous
-        echo "Building $IMAGE_LATEST..."
-        $COMPOSE build production
-        echo "Reloading via systemd (brings up postgres + production)..."
+        echo "Restarting via systemd (build + bring up postgres + production)..."
         systemctl --user restart "$SERVICE"
         if run_health_checks; then
             echo "Deploy successful"
