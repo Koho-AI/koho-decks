@@ -21,6 +21,11 @@ services:
       # "IMAGE_PROVIDER must be provided" even when the .env sets
       # DISABLE_IMAGE_GENERATION=true.
       - DISABLE_IMAGE_GENERATION=${DISABLE_IMAGE_GENERATION:-false}
+      # Shared secret between Next.js export routes and FastAPI's
+      # AuthMiddleware. Lets the in-container Puppeteer path fetch
+      # presentation data without a user session. See
+      # servers/fastapi/api/middlewares.py::_is_internal_render_request.
+      - INTERNAL_RENDER_TOKEN=${INTERNAL_RENDER_TOKEN:-}
 
   postgres:
     ports: !override

@@ -34,13 +34,18 @@ export async function POST(req: NextRequest) {
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(300000);
 
-  // /pdf-maker is whitelisted in NextAuth publicPrefixes (lib/auth.ts),
-  // so the headless browser can hit it without a session cookie. We used
-  // to forward the caller's NextAuth cookies here; that broke on the
-  // `__Secure-` prefixed cookie Next.js issues under HTTPS (ProtocolError:
-  // Invalid cookie fields from CDP because a __Secure- cookie can't be
-  // set without the Secure flag, which requires HTTPS, which the internal
-  // loopback hop isn't).
+  // /pdf-maker is public in NextAuth (lib/auth.ts), but PdfMakerPage
+  // fetches /api/v1/ppt/presentation/{id} from FastAPI, whose
+  // PRESENTATION_ROUTER has a router-wide get_current_user_strict
+  // dependency. Puppeteer has no NextAuth session, so we pass an
+  // internal shared secret via X-Koho-Internal-Token; FastAPI's
+  // AuthMiddleware grants a read-only render context on match.
+  const internalToken = process.env.INTERNAL_RENDER_TOKEN;
+  if (internalToken) {
+    await page.setExtraHTTPHeaders({
+      "X-Koho-Internal-Token": internalToken,
+    });
+  }
 
   await page.goto(`http://localhost/pdf-maker?id=${id}`, {
     waitUntil: "networkidle0",
