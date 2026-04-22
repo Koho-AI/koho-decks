@@ -1,16 +1,18 @@
 [Unit]
 Description=Koho Decks (Presenton fork)
-After=network-online.target docker.service
-Wants=network-online.target
-Requires=docker.service
+
+# No Requires=/After=docker.service here: this is a USER unit and
+# docker.service is a SYSTEM unit — user systemd can't see it. Docker
+# is started by the system before the lingered user session, and if
+# it's not running the ExecStart below will exit with a clear error.
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=%h/app
-ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans
 ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-TimeoutStartSec=600
+TimeoutStartSec=1800
 TimeoutStopSec=120
 
 [Install]
