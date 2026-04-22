@@ -3,7 +3,7 @@ service_name := "decks"
 remote := "decks@koho-dev"
 admin_remote := "alex@koho-dev"
 host_port := "8094"
-public_url := "https://decks.koban.dev"
+public_url := "https://decks.koho.ai"
 
 # Show available recipes
 default:
@@ -40,7 +40,7 @@ vps-bootstrap-remote:
     echo "Next steps:"
     echo "  1. Paste GHA deploy pubkey: ssh {{admin_remote}} -t 'sudo -u decks tee -a ~decks/.ssh/authorized_keys'"
     echo "  2. Append Caddyfile snippet:  just caddy-install-remote"
-    echo "  3. Ask Oliver to add DNS A record: decks.koban.dev -> 142.93.44.235"
+    echo "  3. Ask Oliver to add DNS A record: decks.koho.ai -> 142.93.44.235"
 
 # Append the Caddy vhost block to /etc/caddy/Caddyfile and reload.
 caddy-install-remote:
@@ -50,8 +50,8 @@ caddy-install-remote:
     scp deploy/Caddyfile.snippet {{admin_remote}}:/tmp/decks.caddy
     ssh {{admin_remote}} '
         set -euo pipefail
-        if sudo grep -q "decks.koban.dev" /etc/caddy/Caddyfile; then
-            echo "decks.koban.dev block already present in /etc/caddy/Caddyfile — skipping append"
+        if sudo grep -q "decks.koho.ai" /etc/caddy/Caddyfile; then
+            echo "decks.koho.ai block already present in /etc/caddy/Caddyfile — skipping append"
         else
             sudo tee -a /etc/caddy/Caddyfile < /tmp/decks.caddy
         fi

@@ -27,8 +27,7 @@ Environment variables (see `.env.example`):
 ## Deployment
 
 Production runs on the `koho-dev` VPS (142.93.44.235) alongside koban, under
-the Linux user `decks`, fronted by Caddy at `https://decks.koban.dev`.
-(Hostname will move to `decks.koho.ai` once Oliver updates DNS.)
+the Linux user `decks`, fronted by Caddy at `https://decks.koho.ai`.
 
 - **Runtime:** Docker Compose — `docker-compose.yml` + `docker-compose.prod.yml`
 - **Port:** app listens on `127.0.0.1:8094`; Caddy terminates TLS and reverse proxies
@@ -50,21 +49,14 @@ ssh alex@koho-dev -t 'sudo -u decks tee -a ~decks/.ssh/authorized_keys'
 
 ### Google OAuth client
 
-Create a new OAuth 2.0 Web Application client in the team's GCP project and
-list BOTH hostnames up front so the cutover to `decks.koho.ai` is zero-touch:
+OAuth 2.0 Web Application client in the team's GCP project:
 
-- Authorized JavaScript origins:
-  - `https://decks.koban.dev`
-  - `https://decks.koho.ai`
-- Authorized redirect URIs:
-  - `https://decks.koban.dev/api/auth/callback/google`
-  - `https://decks.koho.ai/api/auth/callback/google`
-- Put the client ID + secret into the GHA `production` environment as
+- Authorized JavaScript origin: `https://decks.koho.ai`
+- Authorized redirect URI: `https://decks.koho.ai/api/auth/callback/google`
+- Client ID + secret live in the GHA `production` environment as
   `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
 
-NextAuth runs with `trustHost: true` and derives redirect URLs from the
-incoming Host header, so both hostnames sign in correctly as soon as DNS
-+ Caddy agree they resolve to the app.
+Server-side domain enforcement to `@koho.ai` is in `servers/nextjs/lib/auth.ts`.
 
 ### Required GHA secrets (`production` environment)
 

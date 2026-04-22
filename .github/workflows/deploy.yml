@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy to decks.koban.dev
+    name: Build and deploy to decks.koho.ai
     runs-on: ubuntu-latest
     environment: production
     env:
