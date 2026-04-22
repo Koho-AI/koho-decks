@@ -34,24 +34,13 @@ export async function POST(req: NextRequest) {
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(300000);
 
-  // Forward the caller's NextAuth session cookie(s) to the headless
-  // browser so the protected /pdf-maker route renders the deck instead
-  // of redirecting to /signin (which points at the external host and
-  // isn't reachable from inside the container → ERR_CONNECTION_REFUSED).
-  const forwarded = req.cookies.getAll().filter((c) =>
-    c.name.includes("authjs") || c.name.includes("next-auth")
-  );
-  if (forwarded.length) {
-    await page.setCookie(
-      ...forwarded.map((c) => ({
-        name: c.name,
-        value: c.value,
-        domain: "localhost",
-        path: "/",
-        httpOnly: true,
-      }))
-    );
-  }
+  // /pdf-maker is whitelisted in NextAuth publicPrefixes (lib/auth.ts),
+  // so the headless browser can hit it without a session cookie. We used
+  // to forward the caller's NextAuth cookies here; that broke on the
+  // `__Secure-` prefixed cookie Next.js issues under HTTPS (ProtocolError:
+  // Invalid cookie fields from CDP because a __Secure- cookie can't be
+  // set without the Secure flag, which requires HTTPS, which the internal
+  // loopback hop isn't).
 
   await page.goto(`http://localhost/pdf-maker?id=${id}`, {
     waitUntil: "networkidle0",
