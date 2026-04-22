@@ -11,13 +11,22 @@ import KohoDecksWordmark from '@/components/KohoDecksWordmark';
 
 export function ConfigurationInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
-
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const route = usePathname();
 
+  // /pdf-maker is rendered by headless Puppeteer from the export handlers.
+  // That browser has no NextAuth session, so the config-fetching path below
+  // hits /api/can-change-keys + /api/user-config, both of which redirect to
+  // /signin, throwing in JSON parse, which leaves the splash up forever and
+  // Puppeteer captures it instead of the deck. Skip the whole init for
+  // internal render paths.
+  const isInternalRenderPath = route?.startsWith('/pdf-maker') ?? false;
+
+  const [isLoading, setIsLoading] = useState(!isInternalRenderPath);
+
   // Fetch user config state
   useEffect(() => {
+    if (isInternalRenderPath) return;
     fetchUserConfigState();
   }, []);
 
