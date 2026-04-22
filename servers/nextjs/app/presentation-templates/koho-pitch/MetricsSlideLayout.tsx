@@ -8,11 +8,11 @@ export const layoutName = 'Koho Metrics'
 export const layoutDescription = 'A slide displaying 2-3 large stat cards with giant Signal Green metric values, labels, and descriptions. Use real or realistic numbers with units. Describe what each metric means for the operator, not how Koho calculates it. Tone: direct, credible, warm.'
 
 const metricItemSchema = z.object({
-    value: z.string().min(1).max(12).default('94').meta({
-        description: "The metric value — a number without unit (unit goes in the unit field)",
+    value: z.string().min(1).max(16).default('94%').meta({
+        description: "The full metric value with its unit baked in (e.g. '94%', '£2.4M', '12'). Keep under 16 characters.",
     }),
-    unit: z.string().min(0).max(5).default('%').meta({
-        description: "Unit suffix like %, £, k, M — displayed smaller next to the value",
+    unit: z.string().max(0).optional().meta({
+        description: "Legacy field — leave blank. Bake the unit into `value` instead.",
     }),
     label: z.string().min(2).max(40).default('Portfolio occupancy').meta({
         description: "What this metric measures — short heading",
@@ -30,9 +30,9 @@ subtitle: z.string().min(0).max(150).default('Live portfolio metrics. No spreads
         description: "Optional subtitle providing context",
     }),
     metrics: z.array(metricItemSchema).min(2).max(3).default([
-        { value: '94', unit: '%', label: 'Portfolio occupancy', description: 'Across all managed locations, updated in real time.' },
-        { value: '£2.4', unit: 'M', label: 'Monthly recurring revenue', description: 'Connected from PMS, CRM, and billing in one view.' },
-        { value: '12', unit: '', label: 'Renewals at risk', description: 'Surfaced 90 days out. Each with a recommended action.' },
+        { value: '94%', label: 'Portfolio occupancy', description: 'Across all managed locations, updated in real time.' },
+        { value: '£2.4M', label: 'Monthly recurring revenue', description: 'Connected from PMS, CRM, and billing in one view.' },
+        { value: '12', label: 'Renewals at risk', description: 'Surfaced 90 days out. Each with a recommended action.' },
     ]).meta({
         description: "2-3 key metrics to display as large stat cards",
     }),
@@ -48,9 +48,9 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
 
     const title = data?.title || 'The numbers that matter.'
     const metrics = data?.metrics || [
-        { value: '94', unit: '%', label: 'Portfolio occupancy', description: 'Across all managed locations, updated in real time.' },
-        { value: '£2.4', unit: 'M', label: 'Monthly recurring revenue', description: 'Connected from PMS, CRM, and billing in one view.' },
-        { value: '12', unit: '', label: 'Renewals at risk', description: 'Surfaced 90 days out. Each with a recommended action.' },
+        { value: '94%', label: 'Portfolio occupancy', description: 'Across all managed locations, updated in real time.' },
+        { value: '£2.4M', label: 'Monthly recurring revenue', description: 'Connected from PMS, CRM, and billing in one view.' },
+        { value: '12', label: 'Renewals at risk', description: 'Surfaced 90 days out. Each with a recommended action.' },
     ]
 
     return (
@@ -125,7 +125,9 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                             background: `radial-gradient(circle at 100% 0%, ${t.signalTint} 0%, transparent 50%)`,
                         }} />
 
-                        {/* Giant figure */}
+                        {/* Giant figure. Units are now baked into `value`
+                            (e.g. "18%", "£240k") so the headline number is
+                            a single editable text leaf with no ghost unit. */}
                         <span style={{
                             fontFamily: "'Manrope', sans-serif",
                             fontWeight: 300,
@@ -138,11 +140,6 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                             position: 'relative' as const,
                         }}>
                             {metric.value}
-                            {metric.unit && (
-                                <span style={{ fontSize: '0.5em', color: t.signal, opacity: 0.75, marginLeft: '0.05em', fontWeight: 400 }}>
-                                    {metric.unit}
-                                </span>
-                            )}
                         </span>
 
                         {/* Label + description */}

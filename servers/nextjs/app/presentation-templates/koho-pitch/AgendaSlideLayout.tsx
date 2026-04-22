@@ -123,12 +123,14 @@ const AgendaSlideLayout: React.FC<{ data?: Partial<AgendaData> }> = ({ data }) =
                             background: t.signalTint,
                             flexShrink: 0,
                         }}>
-                            <span style={{
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: '20px',
-                                fontWeight: 500,
-                                color: t.signal,
-                            }}>
+                            <span
+                                data-koho-chrome="true"
+                                style={{
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontSize: '20px',
+                                    fontWeight: 500,
+                                    color: t.signal,
+                                }}>
                                 {String(i + 1).padStart(2, '0')}
                             </span>
                         </div>

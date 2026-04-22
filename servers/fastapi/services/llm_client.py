@@ -2148,6 +2148,9 @@ class LLMClient:
 
         tool_calls: List[AnthropicToolCall] = []
         has_response_schema_tool_call = False
+        emitted_any_json = False
+        stream_text_accum = ""
+        final_stop_reason: Optional[str] = None
         async with client.messages.stream(
             model=model,
             system=self._get_system_prompt(messages),
@@ -2182,7 +2185,21 @@ class LLMClient:
                     and event.delta.type == "input_json_delta"
                     and is_response_schema_tool_call_started
                 ):
+                    emitted_any_json = True
                     yield event.delta.partial_json
+
+                if (
+                    event.type == "content_block_delta"
+                    and event.delta.type == "text_delta"
+                ):
+                    stream_text_accum += event.delta.text
+
+                if event.type == "message_delta":
+                    # Record the final stop_reason (max_tokens / end_turn /
+                    # tool_use / stop_sequence / refusal).
+                    final_stop_reason = getattr(
+                        event.delta, "stop_reason", None
+                    ) or final_stop_reason
 
                 if (
                     event.type == "content_block_stop"
@@ -2221,6 +2238,25 @@ class LLMClient:
                 depth=depth + 1,
             ):
                 yield event
+            return
+
+        # Diagnostic: if the stream ended without emitting any ResponseSchema
+        # JSON, raise a descriptive error instead of letting the empty string
+        # bubble into dirtyjson.loads and produce "Expecting value: line 1
+        # column 1 (char 0)" which tells you nothing.
+        if not emitted_any_json and not tool_calls:
+            detail = (
+                f"Anthropic stream ended with no ResponseSchema tool call "
+                f"(stop_reason={final_stop_reason!r}, depth={depth})."
+            )
+            if final_stop_reason == "max_tokens":
+                detail += (
+                    " The model hit max_tokens before finishing — raise "
+                    "ANTHROPIC_MAX_TOKENS or reduce slide count."
+                )
+            if stream_text_accum:
+                detail += f" Model said: {stream_text_accum[:400]!r}"
+            raise RuntimeError(detail)
 
     def _stream_ollama_structured(
         self,

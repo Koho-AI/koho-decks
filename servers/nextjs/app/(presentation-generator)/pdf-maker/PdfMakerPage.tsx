@@ -146,7 +146,7 @@ const PresentationPage = ({ presentation_id }: { presentation_id: string }) => {
                   {Array.from({ length: 2 }).map((_, index) => (
                     <Skeleton
                       key={index}
-                      className="aspect-video bg-gray-400 my-4 w-full mx-auto max-w-[1280px]"
+                      className="aspect-video bg-gray-400 my-4 w-full mx-auto max-w-[1920px]"
                     />
                   ))}
                 </div>

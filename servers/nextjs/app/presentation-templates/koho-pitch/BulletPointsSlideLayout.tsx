@@ -93,14 +93,16 @@ const BulletPointsSlideLayout: React.FC<{ data?: Partial<BulletData> }> = ({ dat
                         flexDirection: 'column' as const,
                         gap: '18px',
                     }}>
-                        {/* Number marker */}
-                        <span style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: '14px',
-                            letterSpacing: '0.14em',
-                            textTransform: 'uppercase' as const,
-                            color: t.signal,
-                        }}>
+                        {/* Number marker — chrome, not user content */}
+                        <span
+                            data-koho-chrome="true"
+                            style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: '14px',
+                                letterSpacing: '0.14em',
+                                textTransform: 'uppercase' as const,
+                                color: t.signal,
+                            }}>
                             STEP {String(i + 1).padStart(2, '0')}
                         </span>
 

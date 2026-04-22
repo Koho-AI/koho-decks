@@ -44,14 +44,14 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column' as const,
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'center',
             }}>
                 {/* Green marker */}
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column' as const,
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '15px',
                     marginBottom: '48px',
                 }}>
@@ -60,13 +60,15 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                         height: '1px',
                         background: t.signalEdge,
                     }} />
-                    <span style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '17px',
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase' as const,
-                        color: t.signal,
-                    }}>
+                    <span
+                        data-koho-chrome="true"
+                        style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '17px',
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase' as const,
+                            color: t.signal,
+                        }}>
                         &#9650; STATEMENT
                     </span>
                 </div>
@@ -82,7 +84,7 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                         maxWidth: '54ch',
                         marginTop: '12px',
                         marginBottom: '36px',
-                        textAlign: 'center' as const,
+                        textAlign: 'left' as const,
                     }}>
                         {subtitle}
                     </p>
@@ -96,7 +98,7 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                     lineHeight: 0.96,
                     letterSpacing: '-0.035em',
                     color: t.ink,
-                    textAlign: 'center' as const,
+                    textAlign: 'left' as const,
                     maxWidth: '20ch',
                 }}>
                     {statement}
@@ -110,7 +112,7 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                         fontWeight: 300,
                         lineHeight: 1.55,
                         color: t.inkDim,
-                        textAlign: 'center' as const,
+                        textAlign: 'left' as const,
                         marginTop: '48px',
                         maxWidth: '48ch',
                     }}>

@@ -116,8 +116,8 @@ const TeamSlideLayout: React.FC<{ data?: Partial<TeamData> }> = ({ data }) => {
                     <div key={i} style={{
                         display: 'flex',
                         flexDirection: 'column' as const,
-                        alignItems: 'center',
-                        textAlign: 'center' as const,
+                        alignItems: 'flex-start',
+                        textAlign: 'left' as const,
                         gap: '18px',
                     }}>
                         {/* Photo or initials */}

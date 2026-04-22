@@ -30,9 +30,28 @@ export async function POST(req: NextRequest) {
     ],
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720 });
+  await page.setViewport({ width: 1920, height: 1080 });
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(300000);
+
+  // Forward the caller's NextAuth session cookie(s) to the headless
+  // browser so the protected /pdf-maker route renders the deck instead
+  // of redirecting to /signin (which points at the external host and
+  // isn't reachable from inside the container → ERR_CONNECTION_REFUSED).
+  const forwarded = req.cookies.getAll().filter((c) =>
+    c.name.includes("authjs") || c.name.includes("next-auth")
+  );
+  if (forwarded.length) {
+    await page.setCookie(
+      ...forwarded.map((c) => ({
+        name: c.name,
+        value: c.value,
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+      }))
+    );
+  }
 
   await page.goto(`http://localhost/pdf-maker?id=${id}`, {
     waitUntil: "networkidle0",
@@ -72,8 +91,8 @@ export async function POST(req: NextRequest) {
   }
 
   const pdfBuffer = await page.pdf({
-    width: "1280px",
-    height: "720px",
+    width: "1920px",
+    height: "1080px",
     printBackground: true,
     margin: { top: 0, right: 0, bottom: 0, left: 0 },
   });

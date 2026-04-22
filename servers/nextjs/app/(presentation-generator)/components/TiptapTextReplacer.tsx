@@ -34,11 +34,19 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
   const [processedElements, setProcessedElements] = useState(
     new Set<HTMLElement>()
   );
+
+  // Phase 7c — escape hatch to disable the replacer entirely for debugging
+  // (lets us isolate whether a slide crash is in the replacer or the template).
+  //   NEXT_PUBLIC_DISABLE_TIPTAP_REPLACER=1 docker compose restart production
+  const DISABLED =
+    typeof process !== "undefined" &&
+    process.env?.NEXT_PUBLIC_DISABLE_TIPTAP_REPLACER === "1";
   // Track created React roots to update content when slideData changes
   const rootsRef = useRef<
     Map<HTMLElement, { root: any; dataPath: string;  fallbackText: string }>
   >(new Map());
   useEffect(() => {
+    if (DISABLED) return;
     if (!containerRef.current) return;
 
     const container = containerRef.current;
@@ -49,9 +57,9 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
 
       allElements.forEach((element) => {
         const htmlElement = element as HTMLElement;
-
+        try {
         // Skip if already processed
-       
+
         if (
           processedElements.has(htmlElement) ||
           htmlElement.classList.contains("tiptap-text-editor") ||
@@ -83,16 +91,38 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
 
         const dataPath = findDataPath(slideData, trimmedText);
 
+        // Phase 7a — fail-loud: surface template ↔ data mismatches in the
+        // browser console so the audit (per phase-7 plan) has a concrete
+        // list to drive. Silently-orphaned text looks "hard-coded" to the
+        // user because edits go nowhere.
+        if (!dataPath.path) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "[TiptapTextReplacer] No data path for",
+            JSON.stringify(trimmedText.slice(0, 60)),
+            "— template renders this text but no matching field in slide.content. " +
+              "Either add it to the schema or wrap in data-koho-chrome='true'."
+          );
+        }
+
         // Create a container for the TiptapText
         const tiptapContainer = document.createElement("div");
         tiptapContainer.style.cssText = allStyles || "";
         tiptapContainer.className = Array.from(allClasses).join(" ");
     
-        // Replace the element
-        if(htmlElement.parentNode) {
-        htmlElement.parentNode.replaceChild(tiptapContainer, htmlElement);
-        // Mark as processed
-        htmlElement.innerHTML = "";
+        // Replace the element — guard against stale references from
+        // framer-motion / other animation libs that may have removed
+        // or reparented the node since we captured it.
+        if (
+          htmlElement.isConnected &&
+          htmlElement.parentNode &&
+          htmlElement.parentNode.contains(htmlElement)
+        ) {
+          htmlElement.parentNode.replaceChild(tiptapContainer, htmlElement);
+          htmlElement.innerHTML = "";
+        } else {
+          // Node moved / removed under us. Skip without crashing.
+          return;
         }
         setProcessedElements((prev) => new Set(prev).add(htmlElement));
         // Render TiptapText
@@ -109,7 +139,7 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
         root.render(
           <TiptapText
             content={initialContent}
-           
+
             onContentChange={(content: string) => {
               if (dataPath && onContentChange) {
                 onContentChange(content, dataPath.path, slideIndex);
@@ -118,6 +148,14 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
             placeholder="Enter text..."
           />
         );
+        } catch (err) {
+          // One node failing (e.g. because framer-motion or some other
+          // library rearranged the DOM under us) must not blow up the
+          // whole slide. Swallow + continue so the remaining nodes get
+          // processed and the user sees an editable deck.
+          // eslint-disable-next-line no-console
+          console.warn("TiptapTextReplacer: skipped a node due to", err);
+        }
       });
     };
 
@@ -133,19 +171,27 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
   // When slideData changes, update existing editors' content using the stored dataPath
   useEffect(() => {
     if (!rootsRef.current || rootsRef.current.size === 0) return;
-    rootsRef.current.forEach(({ root, dataPath,  fallbackText }) => {
-      const newContent = dataPath ? getValueByPath(slideData, dataPath) ?? fallbackText : fallbackText;
-      root.render(
-        <TiptapText
-          content={newContent}
-          onContentChange={(content: string) => {
-            if (dataPath && onContentChange) {
-              onContentChange(content, dataPath, slideIndex);
-            }
-          }}
-          placeholder="Enter text..."
-        />
-      );
+    rootsRef.current.forEach(({ root, dataPath, fallbackText }, container) => {
+      try {
+        if (!container.isConnected) return;
+        const newContent = dataPath
+          ? getValueByPath(slideData, dataPath) ?? fallbackText
+          : fallbackText;
+        root.render(
+          <TiptapText
+            content={newContent}
+            onContentChange={(content: string) => {
+              if (dataPath && onContentChange) {
+                onContentChange(content, dataPath, slideIndex);
+              }
+            }}
+            placeholder="Enter text..."
+          />
+        );
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("TiptapTextReplacer: update skipped due to", err);
+      }
     });
   }, [slideData, slideIndex]);
   // helper functions
@@ -202,6 +248,14 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
       // Check if current element or any parent is in ignored list
       let currentElement: HTMLElement | null = element;
       while (currentElement) {
+        // Phase 7a — explicit chrome marker on Koho templates.
+        // Anything under a `data-koho-chrome="true"` subtree is static
+        // template chrome (section labels, page numbers, status badges)
+        // that shouldn't be user-editable.
+        if (currentElement.getAttribute?.("data-koho-chrome") === "true") {
+          return true;
+        }
+
         // Check element type
         if (ignoredElementTypes.includes(currentElement.tagName)) {
           return true;
@@ -288,11 +342,11 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
         return true;
       }
 
-      // Skip elements that contain interactive content (simplified since we now use isInIgnoredElementTree)
+      // Skip only truly interactive descendants (buttons, inputs). Images
+      // and SVGs are fine as siblings of editable text — metric cards
+      // routinely pair an icon with a number.
       if (
-        element.querySelector(
-          "img, svg, button, input, textarea, select, a[href]"
-        )
+        element.querySelector("button, input, textarea, select")
       ) {
         return true;
       }
@@ -311,13 +365,11 @@ const TiptapTextReplacer: React.FC<TiptapTextReplacerProps> = ({
       );
       if (hasContainerClass) return true;
 
-      // Skip very short text that might be UI elements
+      // Allow any non-empty text — metric values like "5" or "12" need
+      // to stay editable. Single-char punctuation is rare in templates
+      // and harmless if it picks up an editor instance.
       const text = getDirectTextContent(element).trim();
-      if (text.length < 2) return true;
-
-      // Skip elements that look like numbers or single characters (might be icons/UI)
-      // if (/^[0-9]+$/.test(text) || text.length === 1) return true;
-      if (text.length <3) return true;
+      if (text.length < 1) return true;
 
       return false;
     };

@@ -61,7 +61,9 @@ export default function ShowcaseMockup({
                 flexDirection: 'column' as const,
             }}>
                 {/* Browser chrome bar */}
-                <div style={{
+                <div
+                    data-koho-chrome="true"
+                    style={{
                     height: '48px',
                     background: chromeBarBg,
                     display: 'flex',
@@ -110,8 +112,13 @@ export default function ShowcaseMockup({
                     </div>
                 </div>
 
-                {/* Content area — scaled down to fit, with theme CSS variables injected */}
+                {/* Content area — scaled down to fit, with theme CSS variables injected.
+                    Marked as chrome so Tiptap doesn't try to make the showcase
+                    dashboard text editable (and also doesn't race with framer-motion
+                    animations inside). Showcase dashboards are demo visuals, not
+                    user-owned content. */}
                 <div
+                    data-koho-chrome="true"
                     className={isLight ? 'light' : 'dark'}
                     style={{
                         flex: 1,

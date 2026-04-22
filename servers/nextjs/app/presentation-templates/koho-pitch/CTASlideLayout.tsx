@@ -63,14 +63,14 @@ const CTASlideLayout: React.FC<{ data?: Partial<CTAData> }> = ({ data }) => {
                 <img src={t.logoSrc} alt="Koho" width={300} style={{ height: 'auto' }} />
             </div>
 
-            {/* CTA content — vertically centred */}
+            {/* CTA content — vertically centred, horizontally left-aligned */}
             <div style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column' as const,
                 justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center' as const,
+                alignItems: 'flex-start',
+                textAlign: 'left' as const,
             }}>
                 <h1 style={{
                     fontFamily: "'Manrope', sans-serif",
@@ -142,7 +142,7 @@ const CTASlideLayout: React.FC<{ data?: Partial<CTAData> }> = ({ data }) => {
             {(contactName || contactEmail) && (
                 <div style={{
                     display: 'flex',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-start',
                     gap: '36px',
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '17px',

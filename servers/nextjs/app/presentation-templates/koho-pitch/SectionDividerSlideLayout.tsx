@@ -44,7 +44,7 @@ const SectionDividerSlideLayout: React.FC<{ data?: Partial<SectionDividerData> }
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column' as const,
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'center',
             }}>
                 {/* Green line */}
@@ -75,7 +75,7 @@ const SectionDividerSlideLayout: React.FC<{ data?: Partial<SectionDividerData> }
                     lineHeight: 1.0,
                     letterSpacing: '-0.035em',
                     color: t.ink,
-                    textAlign: 'center' as const,
+                    textAlign: 'left' as const,
                 }}>
                     {sectionTitle}
                 </h1>
@@ -90,7 +90,7 @@ const SectionDividerSlideLayout: React.FC<{ data?: Partial<SectionDividerData> }
                         color: t.inkDim,
                         maxWidth: '54ch',
                         marginTop: '12px',
-                        textAlign: 'center' as const,
+                        textAlign: 'left' as const,
                     }}>
                         {subtitle}
                     </p>

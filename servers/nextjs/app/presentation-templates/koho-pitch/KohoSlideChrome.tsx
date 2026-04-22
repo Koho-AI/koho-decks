@@ -166,6 +166,7 @@ function KohoSlideChrome({
         {/* ─── Header ─── */}
         <header
           className="relative flex items-center justify-between"
+          data-koho-chrome="true"
           style={{
             zIndex: 2,
             padding: "0 108px",
@@ -236,6 +237,7 @@ function KohoSlideChrome({
         {/* ─── Footer ─── */}
         <footer
           className="relative flex items-center justify-between"
+          data-koho-chrome="true"
           style={{
             zIndex: 2,
             padding: "0 108px",
