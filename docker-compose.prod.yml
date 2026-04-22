@@ -13,9 +13,15 @@
 services:
   production:
     image: koho-decks:latest
-    ports:
+    ports: !override
       - "127.0.0.1:${HOST_PORT:-8094}:80"
+    environment:
+      # Not in base docker-compose.yml's env list; add here so .env reaches
+      # the container. Without this, FastAPI's startup lifespan raises
+      # "IMAGE_PROVIDER must be provided" even when the .env sets
+      # DISABLE_IMAGE_GENERATION=true.
+      - DISABLE_IMAGE_GENERATION=${DISABLE_IMAGE_GENERATION:-false}
 
   postgres:
-    ports:
+    ports: !override
       - "127.0.0.1:5432:5432"

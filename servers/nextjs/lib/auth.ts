@@ -76,6 +76,14 @@ export const authConfig = {
         "/signin",
         "/api/auth",
         "/view", // Phase 5 public share viewer (not built yet, reserved)
+        // /pdf-maker renders a presentation for headless Puppeteer scraping
+        // from the export handler (app/api/presentation_to_pptx_model). The
+        // Puppeteer browser has no session, so gating it would send the
+        // scraper to /signin and break exports. IDs are UUIDv4 so external
+        // guessing is impractical; still a known trust-boundary and we'd
+        // want to add an internal-only token if this app ever leaves an
+        // invite-only team context.
+        "/pdf-maker",
         "/_next",
         "/koho",
         "/favicon",
