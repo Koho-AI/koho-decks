@@ -62,6 +62,18 @@ run_health_checks() {
     return 1
 }
 
+# Reclaim disk after a successful deploy. The VPS is shared with sibling
+# services (koban) on the same docker daemon, but `docker image prune`
+# without -a only touches dangling (untagged) images — tagged images like
+# koban:latest and koho-decks:previous are untouched. `until=168h` further
+# restricts the prune to layers older than 7 days, preserving anything we
+# might want to hand-retag for an emergency rollback. Never fatal.
+prune_stale() {
+    echo "Pruning docker images + build cache older than 7 days..."
+    docker image prune -f --filter "until=168h" || true
+    docker builder prune -f --filter "until=168h" || true
+}
+
 case "$mode" in
     deploy)
         tag_previous
@@ -69,6 +81,7 @@ case "$mode" in
         systemctl --user restart "$SERVICE"
         if run_health_checks; then
             echo "Deploy successful"
+            prune_stale
             exit 0
         fi
         echo "Health check failed, rolling back..." >&2
@@ -91,6 +104,7 @@ case "$mode" in
         systemctl --user restart "$SERVICE"
         if run_health_checks; then
             echo "Rollback successful"
+            prune_stale
             exit 0
         fi
         echo "Rollback failed health checks" >&2

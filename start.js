@@ -15,6 +15,17 @@ const args = process.argv.slice(2);
 const hasDevArg = args.includes("--dev") || args.includes("-d");
 const isDev = hasDevArg;
 const canChangeKeys = process.env.CAN_CHANGE_KEYS !== "false";
+// Matches the Dockerfile build arg. When the binary was not installed at
+// build time, we must not spawn it here — an unfound `ollama` command
+// would cause the child process to exit and pull down the whole container
+// via Promise.race below. The Dockerfile propagates this from ARG to ENV,
+// but docker-compose.prod.yml also passes it at runtime so flipping the
+// value is possible without rebuilding.
+//
+// Comparison mirrors the Dockerfile's `[ "$INCLUDE_OLLAMA" = "true" ]`
+// exactly: any value other than the literal string "true" disables
+// ollama. Default-true is preserved via the nullish-coalesce fallback.
+const includeOllama = (process.env.INCLUDE_OLLAMA ?? "true") === "true";
 
 const fastapiPort = 8000;
 const nextjsPort = 3000;
@@ -170,22 +181,32 @@ const startServers = async () => {
     console.error("Next.js process failed to start:", err);
   });
 
-  const ollamaProcess = spawn("ollama", ["serve"], {
-    cwd: "/",
-    stdio: "inherit",
-    env: process.env,
-  });
+  let ollamaProcess = null;
+  if (includeOllama) {
+    ollamaProcess = spawn("ollama", ["serve"], {
+      cwd: "/",
+      stdio: "inherit",
+      env: process.env,
+    });
 
-  ollamaProcess.on("error", (err) => {
-    console.error("Ollama process failed to start:", err);
-  });
+    ollamaProcess.on("error", (err) => {
+      console.error("Ollama process failed to start:", err);
+    });
+  } else {
+    console.log("INCLUDE_OLLAMA=false — ollama not started");
+  }
 
-  // Keep the Node process alive until both servers exit
-  const exitCode = await Promise.race([
+  // Keep the Node process alive until one of the servers exits. When
+  // ollama isn't running we don't include it in the race; otherwise the
+  // absent process would resolve immediately and kill the container.
+  const exitPromises = [
     new Promise((resolve) => fastApiProcess.on("exit", resolve)),
     new Promise((resolve) => nextjsProcess.on("exit", resolve)),
-    new Promise((resolve) => ollamaProcess.on("exit", resolve)),
-  ]);
+  ];
+  if (ollamaProcess) {
+    exitPromises.push(new Promise((resolve) => ollamaProcess.on("exit", resolve)));
+  }
+  const exitCode = await Promise.race(exitPromises);
 
   console.log(`One of the processes exited. Exit code: ${exitCode}`);
   process.exit(exitCode);

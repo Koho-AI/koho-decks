@@ -24,8 +24,18 @@ ENV TEMP_DIRECTORY=/tmp/presenton
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 
-# Install ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
+# Optionally install ollama. The upstream installer also pulls ~13 GB of
+# CUDA v12 libraries even on GPU-less hosts. Koho's production VPS has no
+# GPU and uses cloud LLM providers (openai/anthropic/google), so we build
+# with INCLUDE_OLLAMA=false there. Default stays true to preserve parity
+# with upstream Presenton and local dev usage.
+ARG INCLUDE_OLLAMA=true
+ENV INCLUDE_OLLAMA=${INCLUDE_OLLAMA}
+RUN if [ "$INCLUDE_OLLAMA" = "true" ]; then \
+        curl -fsSL https://ollama.com/install.sh | sh; \
+    else \
+        echo "INCLUDE_OLLAMA=$INCLUDE_OLLAMA — skipping ollama install"; \
+    fi
 
 # Install dependencies for FastAPI
 RUN pip install alembic aiohttp aiomysql aiosqlite asyncpg psycopg2-binary fastapi[standard] \

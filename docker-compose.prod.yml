@@ -13,6 +13,13 @@
 services:
   production:
     image: koho-decks:latest
+    build:
+      # Forward INCLUDE_OLLAMA from .env to the Dockerfile ARG so the
+      # ~13 GB ollama + CUDA runtime can be skipped on koho-dev. See
+      # Dockerfile — default is true to preserve upstream Presenton
+      # parity; koho-dev's .env sets INCLUDE_OLLAMA=false.
+      args:
+        INCLUDE_OLLAMA: ${INCLUDE_OLLAMA:-true}
     ports: !override
       - "127.0.0.1:${HOST_PORT:-8094}:80"
     environment:
@@ -26,6 +33,10 @@ services:
       # presentation data without a user session. See
       # servers/fastapi/api/middlewares.py::_is_internal_render_request.
       - INTERNAL_RENDER_TOKEN=${INTERNAL_RENDER_TOKEN:-}
+      # Runtime mirror of the build arg — start.js checks it to decide
+      # whether to spawn `ollama serve`. Must match the build arg or the
+      # container will try to exec a missing binary.
+      - INCLUDE_OLLAMA=${INCLUDE_OLLAMA:-true}
 
   postgres:
     ports: !override
