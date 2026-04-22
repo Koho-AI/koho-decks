@@ -18,10 +18,15 @@ class AuthContext:
     email: Optional[str]
     name: Optional[str]
     avatar_url: Optional[str]
+    # True when the caller is the in-container Puppeteer render path
+    # (export-as-pdf / presentation_to_pptx_model) that authenticated via
+    # the X-Koho-Internal-Token header. Such callers have no user/org,
+    # but get VIEWER access to any deck so they can render it.
+    is_internal_render: bool = False
 
     @property
     def is_authenticated(self) -> bool:
-        return self.user_id is not None
+        return self.user_id is not None or self.is_internal_render
 
 
 ANONYMOUS = AuthContext(
@@ -30,4 +35,13 @@ ANONYMOUS = AuthContext(
     email=None,
     name=None,
     avatar_url=None,
+)
+
+INTERNAL_RENDER = AuthContext(
+    user_id=None,
+    organisation_id=None,
+    email=None,
+    name=None,
+    avatar_url=None,
+    is_internal_render=True,
 )

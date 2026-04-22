@@ -58,6 +58,11 @@ async def resolve_deck_access(
     if deck is None:
         return None
 
+    # Internal Puppeteer render path (see AuthMiddleware): read-only
+    # access to any deck, regardless of org/owner. Never grants write.
+    if ctx.is_internal_render:
+        return DeckAccess(deck=deck, role=DeckRole.VIEWER)
+
     # Legacy org-less decks are treated as belonging to the caller's
     # current org (matches the /presentation/all behaviour).
     if (

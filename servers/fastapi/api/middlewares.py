@@ -9,7 +9,7 @@ from fastapi import Request
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from api.auth_context import ANONYMOUS, AuthContext
+from api.auth_context import ANONYMOUS, INTERNAL_RENDER, AuthContext
 from models.sql.deck_collaborator import DeckCollaboratorModel
 from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel, ROLE_MEMBER, ROLE_OWNER
@@ -50,6 +50,15 @@ _DEFAULT_ORG_SLUG = "koho"
 # operations). Configurable via env, defaults to Oliver.
 _SEED_OWNER_EMAIL = os.getenv("KOHO_SEED_OWNER_EMAIL", "oliver@koho.ai").lower()
 
+# Shared secret between Next.js export routes and FastAPI. When the
+# export handler launches Puppeteer, it sets `X-Koho-Internal-Token:
+# <this value>` on every navigation so the sessionless browser can still
+# fetch presentation data via FastAPI. Requests carrying this header
+# bypass cookie auth and get a read-only "internal render" AuthContext.
+# Empty/unset disables the feature — the header is then ignored.
+_INTERNAL_RENDER_TOKEN = os.getenv("INTERNAL_RENDER_TOKEN", "")
+_INTERNAL_RENDER_HEADER = "x-koho-internal-token"
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
@@ -73,6 +82,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request.state.auth = ANONYMOUS
 
+        if _is_internal_render_request(request):
+            request.state.auth = INTERNAL_RENDER
+            return await call_next(request)
+
         session_cookie = _find_session_cookie(request)
         if session_cookie:
             try:
@@ -85,6 +98,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 log.warning("AuthMiddleware: failed to resolve session: %s", exc)
 
         return await call_next(request)
+
+
+def _is_internal_render_request(request: Request) -> bool:
+    if not _INTERNAL_RENDER_TOKEN:
+        return False
+    presented = request.headers.get(_INTERNAL_RENDER_HEADER)
+    if not presented:
+        return False
+    # Constant-time compare so an attacker timing a byte-by-byte brute force
+    # can't learn the prefix. Unlikely to be exploitable through localhost
+    # loopback but cheap insurance.
+    import hmac
+    return hmac.compare_digest(presented, _INTERNAL_RENDER_TOKEN)
 
 
 def _find_session_cookie(request: Request) -> Optional[tuple[str, str]]:
