@@ -1,0 +1,101 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy to decks.koban.dev
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VPS_HOST: koho-dev
+      VPS_USER: decks
+      DEPLOY_DIR: /home/decks/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render .env
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: |
+          envsubst < deploy/env.template > .env
+          # Secrets required for the app to START must be non-empty.
+          # ANTHROPIC_API_KEY isn't checked here — the app boots without it;
+          # only deck generation fails. We'll swap it for `claude` CLI
+          # wrapping (koban-style) in a follow-up.
+          for var in AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET POSTGRES_PASSWORD; do
+            if ! grep -qE "^${var}=.+" .env; then
+              echo "Required secret $var is empty in rendered .env" >&2
+              exit 1
+            fi
+          done
+
+      - name: Join tailnet
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Sync repo to VPS
+        run: |
+          # rsync the build context the VPS needs to `docker compose build`.
+          # Exclude anything that isn't source, plus host-side state dirs
+          # that must survive deploys.
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='app_data' \
+            --exclude='data' \
+            --exclude='servers/nextjs/node_modules' \
+            --exclude='servers/nextjs/.next' \
+            ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/"
+          # .env is gitignored so rsync doesn't carry it — scp separately.
+          scp .env "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/.env"
+          ssh "${VPS_USER}@${VPS_HOST}" "chmod +x ${DEPLOY_DIR}/deploy/deploy.sh"
+
+      - name: Install/refresh systemd unit
+        run: |
+          ssh "${VPS_USER}@${VPS_HOST}" "
+            mkdir -p ~/.config/systemd/user &&
+            cp ${DEPLOY_DIR}/deploy/decks.service ~/.config/systemd/user/ &&
+            systemctl --user daemon-reload &&
+            systemctl --user enable decks
+          "
+
+      - name: Run deploy.sh on VPS
+        run: |
+          ssh "${VPS_USER}@${VPS_HOST}" "bash ${DEPLOY_DIR}/deploy/deploy.sh deploy"

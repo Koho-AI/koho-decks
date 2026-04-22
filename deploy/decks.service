@@ -1,0 +1,17 @@
+[Unit]
+Description=Koho Decks (Presenton fork)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/app
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+TimeoutStartSec=600
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,21 @@
+# Production overrides for the koho-dev VPS deployment.
+#
+# Applied on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# - Binds the app to loopback only; Caddy fronts TLS at decks.koban.dev.
+# - Drops the 1455 Codex OAuth port (irrelevant on a shared server — the
+#   browser can't redirect to the VPS's localhost).
+# - Pins the built image to `koho-decks:latest` so deploy.sh can retag
+#   the previous version as `koho-decks:previous` for rollback.
+# - Pins postgres to 127.0.0.1 as well so psql from the host still works
+#   but the DB never becomes reachable over the tailnet.
+services:
+  production:
+    image: koho-decks:latest
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8094}:80"
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
