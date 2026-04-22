@@ -1,3 +1,5 @@
+import asyncio
+import hashlib
 import logging
 import os
 import uuid
@@ -10,6 +12,7 @@ from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.auth_context import ANONYMOUS, INTERNAL_RENDER, AuthContext
+from models.sql.api_token import ApiTokenModel
 from models.sql.deck_collaborator import DeckCollaboratorModel
 from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel, ROLE_MEMBER, ROLE_OWNER
@@ -59,6 +62,13 @@ _SEED_OWNER_EMAIL = os.getenv("KOHO_SEED_OWNER_EMAIL", "oliver@koho.ai").lower()
 _INTERNAL_RENDER_TOKEN = os.getenv("INTERNAL_RENDER_TOKEN", "")
 _INTERNAL_RENDER_HEADER = "x-koho-internal-token"
 
+# Header carrying a personal access token. Distinct from Authorization so
+# FastAPI only sees PATs that flowed through an intentional path (the MCP
+# server's httpx hop translates Bearer → this header, or a well-informed
+# caller/test hits FastAPI directly). Caddy never sees the raw PAT on the
+# public Authorization header.
+_PAT_HEADER = "x-koho-api-token"
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
@@ -86,6 +96,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.auth = INTERNAL_RENDER
             return await call_next(request)
 
+        # Personal access token takes precedence over cookie session: MCP
+        # clients never have cookies, and a PAT-bearing request is opting
+        # explicitly into that identity. Cookie falls through naturally
+        # when the header is absent or unrecognised.
+        pat_ctx = await _resolve_pat_auth(request)
+        if pat_ctx is not None:
+            request.state.auth = pat_ctx
+            return await call_next(request)
+
         session_cookie = _find_session_cookie(request)
         if session_cookie:
             try:
@@ -111,6 +130,73 @@ def _is_internal_render_request(request: Request) -> bool:
     # loopback but cheap insurance.
     import hmac
     return hmac.compare_digest(presented, _INTERNAL_RENDER_TOKEN)
+
+
+async def _resolve_pat_auth(request: Request) -> Optional[AuthContext]:
+    """Return an AuthContext if the request carries a valid PAT, else None.
+
+    Never raises: an unknown / revoked / malformed token falls through
+    silently so cookie auth can still take over. Raw token value never
+    appears in logs.
+    """
+    presented = request.headers.get(_PAT_HEADER)
+    if not presented:
+        return None
+
+    token_hash = hashlib.sha256(presented.encode("utf-8")).hexdigest()
+
+    async with async_session_maker() as session:
+        row = (
+            await session.execute(
+                select(ApiTokenModel, UserModel, MembershipModel)
+                .join(UserModel, UserModel.id == ApiTokenModel.user_id)
+                .join(
+                    MembershipModel,
+                    MembershipModel.user_id == UserModel.id,
+                    isouter=True,
+                )
+                .where(
+                    ApiTokenModel.token_hash == token_hash,
+                    ApiTokenModel.revoked_at.is_(None),
+                )
+                .limit(1)
+            )
+        ).first()
+
+    if row is None:
+        return None
+
+    token, user, membership = row
+
+    # Fire-and-forget last_used_at update — don't block the request on
+    # what is ultimately a telemetry write. Failure logs the token id
+    # (never the raw value) and is otherwise swallowed.
+    asyncio.create_task(_touch_last_used_at(token.id))
+
+    return AuthContext(
+        user_id=user.id,
+        organisation_id=membership.organisation_id if membership else None,
+        email=user.email,
+        name=user.name,
+        avatar_url=user.avatar_url,
+        is_pat_authenticated=True,
+    )
+
+
+async def _touch_last_used_at(token_id: uuid.UUID) -> None:
+    try:
+        async with async_session_maker() as session:
+            token = await session.get(ApiTokenModel, token_id)
+            if token is None:
+                return
+            token.last_used_at = datetime.now(timezone.utc)
+            await session.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        log.warning(
+            "AuthMiddleware: last_used_at update failed for token %s: %s",
+            token_id,
+            exc,
+        )
 
 
 def _find_session_cookie(request: Request) -> Optional[tuple[str, str]]:

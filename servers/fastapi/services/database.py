@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy import text
 from sqlmodel import SQLModel
 
+from models.sql.api_token import ApiTokenModel
 from models.sql.async_presentation_generation_status import (
     AsyncPresentationGenerationTaskModel,
 )
@@ -84,6 +85,7 @@ async def create_db_and_tables():
                     MembershipModel.__table__,
                     DeckCollaboratorModel.__table__,
                     InvitationModel.__table__,
+                    ApiTokenModel.__table__,
                     ShareLinkModel.__table__,
                     ShareViewerModel.__table__,
                     ShareViewModel.__table__,
