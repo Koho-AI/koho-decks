@@ -65,6 +65,13 @@ Server-side domain enforcement to `@koho.ai` is in `servers/nextjs/lib/auth.ts`.
 `TAILSCALE_OAUTH_CLIENT_ID`, `TAILSCALE_OAUTH_SECRET`. Optional:
 `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PEXELS_API_KEY`, `SMTP_*`.
 
+### Optional build flags
+
+- `INCLUDE_OLLAMA` (default `true`) — set to `false` to skip the ollama
+  install in the Dockerfile and the `ollama serve` spawn at runtime.
+  Saves ~13 GB in the built image. Koho-dev runs with `false` since the
+  VPS has no GPU and production uses cloud LLM providers.
+
 ### Common operations
 
 ```sh
