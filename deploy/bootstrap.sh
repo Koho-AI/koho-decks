@@ -39,6 +39,11 @@ else
     echo "User '$USER_NAME' already exists — skipping create"
 fi
 
+# ── Ensure rsync is present (required by GHA's `Sync repo to VPS` step) ─
+if ! command -v rsync > /dev/null 2>&1; then
+    apt-get install -y rsync
+fi
+
 # ── Install Docker if missing ──────────────────────────────────────────
 if ! command -v docker > /dev/null 2>&1; then
     echo "Installing Docker Engine + compose plugin..."
