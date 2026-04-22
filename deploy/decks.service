@@ -12,7 +12,11 @@ RemainAfterExit=yes
 WorkingDirectory=%h/app
 ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans production
 ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-TimeoutStartSec=1800
+# Cold rebuilds on this VPS run ~20 min for compile + another 10-15 min
+# for BuildKit's layer-export phase. 1800s (30 min) has twice now cut the
+# export step short and left the service failed mid-deploy; 3600s gives
+# comfortable headroom for the full cycle plus transient disk-IO stalls.
+TimeoutStartSec=3600
 TimeoutStopSec=120
 
 [Install]
