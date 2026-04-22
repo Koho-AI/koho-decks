@@ -127,7 +127,17 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
 
                         {/* Giant figure. Units are now baked into `value`
                             (e.g. "18%", "£240k") so the headline number is
-                            a single editable text leaf with no ghost unit. */}
+                            a single editable text leaf with no ghost unit.
+
+                            Glow uses `filter: drop-shadow()` rather than
+                            `text-shadow` because Chromium's PDF renderer
+                            caps text-shadow blur per-glyph at large font
+                            sizes (144px) and falls back to hard-edge
+                            filled rectangles — one green block per glyph,
+                            which looks terrible. `drop-shadow` rasterises
+                            the whole element's alpha mask as one bitmap
+                            pass, which survives PDF export. Visually
+                            identical on-screen. */}
                         <span style={{
                             fontFamily: "'Manrope', sans-serif",
                             fontWeight: 300,
@@ -135,7 +145,7 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                             lineHeight: 0.85,
                             color: t.signal,
                             letterSpacing: '-0.04em',
-                            textShadow: `0 0 60px ${t.signalGlow}`,
+                            filter: `drop-shadow(0 0 60px ${t.signalGlow})`,
                             fontVariantNumeric: 'tabular-nums',
                             position: 'relative' as const,
                         }}>
