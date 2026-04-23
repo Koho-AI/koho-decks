@@ -84,15 +84,27 @@ just rollback-remote   # swap koho-decks:previous back to :latest + restart
 
 ## MCP access
 
-The MCP server at `https://decks.koho.ai/mcp` exposes Koho Decks tools to any MCP-compatible client — generate decks, list presentations, manage slides — authenticated as your Koho account.
+The MCP server at `https://decks.koho.ai/mcp` exposes Koho Decks tools to any MCP-compatible client — generate decks, list presentations, manage slides — authenticated as your Koho account via OAuth 2.1. No tokens to create or manage.
 
-### Create a personal access token
+### How it works
 
-1. Sign in at `https://decks.koho.ai`
-2. Go to `/settings/tokens` → **New token**
-3. Copy the token (`kohod_<32 hex chars>`) — it is shown exactly once. Store it in your password manager.
+1. Point your MCP client at `https://decks.koho.ai/mcp` — no headers, no tokens.
+2. The first request gets a 401 with `WWW-Authenticate: Bearer resource_metadata="..."`.
+3. The client discovers the authorization server via `/.well-known/oauth-authorization-server`, registers itself via `POST /oauth/register` (RFC 7591 Dynamic Client Registration), and opens a browser-based authorization flow.
+4. You sign in with Google (if not already), see a consent screen — "Approve \<ClientName\> to access Koho Decks?" — and click Approve.
+5. The browser hands the auth code back to the client (loopback URL for native clients, registered redirect URI for browser clients).
+6. The client exchanges the code for a JWT access token + refresh token at `POST /oauth/token`.
+7. Tool calls proceed. Tokens rotate silently on each use.
 
 ### Configure your MCP client
+
+**Claude Code:**
+
+```sh
+claude mcp add koho-decks --transport http https://decks.koho.ai/mcp
+```
+
+The first tool call triggers the browser flow automatically.
 
 **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
@@ -100,44 +112,23 @@ The MCP server at `https://decks.koho.ai/mcp` exposes Koho Decks tools to any MC
 {
   "mcpServers": {
     "koho-decks": {
-      "url": "https://decks.koho.ai/mcp",
-      "headers": {
-        "Authorization": "Bearer <your-token>"
-      }
+      "url": "https://decks.koho.ai/mcp"
     }
   }
 }
 ```
 
-**Claude Code:**
+No `"headers"` field needed — Claude Desktop handles the OAuth browser flow itself.
 
-```sh
-claude mcp add koho-decks --url https://decks.koho.ai/mcp --header "Authorization: Bearer <your-token>"
-```
+**Cursor:** Settings → MCP → Add server → URL: `https://decks.koho.ai/mcp`. No token.
 
-**Cursor:** Open Settings → MCP → Add server. Supply the URL `https://decks.koho.ai/mcp` and add the header `Authorization: Bearer <your-token>`.
+### Revoke access
 
-### Verify your token
-
-```sh
-export TOKEN=kohod_<your-token>
-curl -sS -X POST \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
-  https://decks.koho.ai/mcp
-```
-
-A JSON response listing available tools confirms the token is valid.
-
-### Rotate / revoke
-
-Go to `/settings/tokens`, revoke the old token, and create a new one. Update your client config with the replacement.
+Go to `https://decks.koho.ai/settings/oauth-clients` — lists every client you have approved, with individual revoke buttons.
 
 ### Trust model
 
-PATs carry exactly the same permissions as your web session — nothing elevated. If a token is compromised, revoke it immediately and reissue.
+Access tokens are short-lived JWTs (1 hour) backed by 30-day refresh tokens stored by the MCP client. Token compromise is mitigated by: revocation via `/settings/oauth-clients`; automatic rotation on every use; refresh-token reuse detection (a replayed revoked token is logged loudly). Revoking one client does not affect others.
 
 ## Roadmap
 

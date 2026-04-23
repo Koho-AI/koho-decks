@@ -5,7 +5,9 @@ from api.middlewares import AuthMiddleware, UserConfigEnvUpdateMiddleware
 from api.v1.ppt.router import API_V1_PPT_ROUTER
 from api.v1.webhook.router import API_V1_WEBHOOK_ROUTER
 from api.v1.mock.router import API_V1_MOCK_ROUTER
+from api.v1.public.oauth import OAUTH_ROUTER
 from api.v1.public.share import PUBLIC_SHARE_ROUTER
+from api.v1.public.well_known import WELL_KNOWN_ROUTER
 from api.v1.ppt.endpoints.health import HEALTH_ROUTER
 from fastapi import APIRouter as _APIRouter
 
@@ -24,6 +26,17 @@ _PUBLIC_V1 = _APIRouter(prefix="/api/v1")
 _PUBLIC_V1.include_router(PUBLIC_SHARE_ROUTER)
 _PUBLIC_V1.include_router(HEALTH_ROUTER)
 app.include_router(_PUBLIC_V1)
+
+# Well-known discovery endpoints (/.well-known/jwks.json, oauth metadata)
+# are mounted at the origin root per RFC convention. nginx.conf routes
+# /.well-known/* to FastAPI so these are reachable publicly.
+app.include_router(WELL_KNOWN_ROUTER)
+
+# OAuth 2.1 authorization server. /oauth/authorize is browser-facing
+# (reads NextAuth session cookies); /oauth/token and /oauth/revoke are
+# client-facing (RFC 6749 form-encoded). nginx.conf proxies /oauth/*
+# to FastAPI with Host + X-Forwarded-* forwarded.
+app.include_router(OAUTH_ROUTER)
 
 # Middlewares
 origins = ["*"]

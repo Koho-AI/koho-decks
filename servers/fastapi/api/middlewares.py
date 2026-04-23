@@ -1,5 +1,3 @@
-import asyncio
-import hashlib
 import logging
 import os
 import uuid
@@ -7,12 +5,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
+from authlib.jose.errors import JoseError
 from fastapi import Request
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.auth_context import ANONYMOUS, INTERNAL_RENDER, AuthContext
-from models.sql.api_token import ApiTokenModel
+from services.jwt_signing import decode_jwt
 from models.sql.deck_collaborator import DeckCollaboratorModel
 from models.sql.invitation import InvitationModel
 from models.sql.membership import MembershipModel, ROLE_MEMBER, ROLE_OWNER
@@ -62,13 +61,6 @@ _SEED_OWNER_EMAIL = os.getenv("KOHO_SEED_OWNER_EMAIL", "oliver@koho.ai").lower()
 _INTERNAL_RENDER_TOKEN = os.getenv("INTERNAL_RENDER_TOKEN", "")
 _INTERNAL_RENDER_HEADER = "x-koho-internal-token"
 
-# Header carrying a personal access token. Distinct from Authorization so
-# FastAPI only sees PATs that flowed through an intentional path (the MCP
-# server's httpx hop translates Bearer → this header, or a well-informed
-# caller/test hits FastAPI directly). Caddy never sees the raw PAT on the
-# public Authorization header.
-_PAT_HEADER = "x-koho-api-token"
-
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
@@ -96,13 +88,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.auth = INTERNAL_RENDER
             return await call_next(request)
 
-        # Personal access token takes precedence over cookie session: MCP
-        # clients never have cookies, and a PAT-bearing request is opting
-        # explicitly into that identity. Cookie falls through naturally
-        # when the header is absent or unrecognised.
-        pat_ctx = await _resolve_pat_auth(request)
-        if pat_ctx is not None:
-            request.state.auth = pat_ctx
+        # OAuth 2.1 Bearer JWT — MCP clients and direct API users present
+        # tokens issued by /oauth/token. Checked BEFORE cookies because a
+        # bearer-bearing request is explicitly opting into that identity.
+        jwt_ctx = _resolve_jwt_auth(request)
+        if jwt_ctx is not None:
+            request.state.auth = jwt_ctx
             return await call_next(request)
 
         session_cookie = _find_session_cookie(request)
@@ -132,71 +123,76 @@ def _is_internal_render_request(request: Request) -> bool:
     return hmac.compare_digest(presented, _INTERNAL_RENDER_TOKEN)
 
 
-async def _resolve_pat_auth(request: Request) -> Optional[AuthContext]:
-    """Return an AuthContext if the request carries a valid PAT, else None.
+def _resolve_jwt_auth(request: Request) -> Optional[AuthContext]:
+    """Validate an incoming `Authorization: Bearer <jwt>` header issued by
+    our own OAuth 2.1 authorization server.
 
-    Never raises: an unknown / revoked / malformed token falls through
-    silently so cookie auth can still take over. Raw token value never
-    appears in logs.
+    Returns None (fall-through) for missing/malformed headers, bad
+    signatures, wrong issuer/audience, or expired tokens. Never raises —
+    downstream auth (cookie or anonymous) still has a chance.
+
+    The JWT claim set is the source of identity — no DB lookup per
+    request. Profile fields (email, name, org) are baked into the token
+    at issuance and refreshed on every rotation.
     """
-    presented = request.headers.get(_PAT_HEADER)
-    if not presented:
+    auth_header = request.headers.get("authorization") or ""
+    prefix = "Bearer "
+    if not auth_header.startswith(prefix):
+        return None
+    token = auth_header[len(prefix):].strip()
+    if not token:
         return None
 
-    token_hash = hashlib.sha256(presented.encode("utf-8")).hexdigest()
-
-    async with async_session_maker() as session:
-        row = (
-            await session.execute(
-                select(ApiTokenModel, UserModel, MembershipModel)
-                .join(UserModel, UserModel.id == ApiTokenModel.user_id)
-                .join(
-                    MembershipModel,
-                    MembershipModel.user_id == UserModel.id,
-                    isouter=True,
-                )
-                .where(
-                    ApiTokenModel.token_hash == token_hash,
-                    ApiTokenModel.revoked_at.is_(None),
-                )
-                .limit(1)
-            )
-        ).first()
-
-    if row is None:
+    try:
+        claims = decode_jwt(token)
+    except JoseError:
+        return None
+    except Exception as exc:  # pragma: no cover - defensive
+        log.warning("AuthMiddleware: JWT decode raised %s", type(exc).__name__)
         return None
 
-    token, user, membership = row
+    # Fail-closed on missing APP_BASE_URL: we will not accept any JWT
+    # without an explicit issuer policy. Production always sets this;
+    # a misconfigured staging deploy would otherwise silently accept
+    # tokens from any issuer since both `iss` and `aud` checks degrade
+    # to no-ops.
+    issuer = os.getenv("APP_BASE_URL", "").rstrip("/")
+    if not issuer:
+        log.warning(
+            "AuthMiddleware: rejecting JWT because APP_BASE_URL is unset"
+        )
+        return None
+    if claims.get("iss") != issuer:
+        return None
+    # `aud` can be a string or a list per RFC 7519. We always mint it as
+    # a string; be tolerant of either shape on the read side.
+    aud = claims.get("aud")
+    if aud not in (issuer, [issuer]):
+        return None
 
-    # Fire-and-forget last_used_at update — don't block the request on
-    # what is ultimately a telemetry write. Failure logs the token id
-    # (never the raw value) and is otherwise swallowed.
-    asyncio.create_task(_touch_last_used_at(token.id))
+    sub = claims.get("sub")
+    if not sub:
+        return None
+    try:
+        user_id = uuid.UUID(str(sub))
+    except (TypeError, ValueError):
+        return None
+
+    org_raw = claims.get("organisation_id")
+    org_id: Optional[uuid.UUID] = None
+    if org_raw:
+        try:
+            org_id = uuid.UUID(str(org_raw))
+        except (TypeError, ValueError):
+            org_id = None
 
     return AuthContext(
-        user_id=user.id,
-        organisation_id=membership.organisation_id if membership else None,
-        email=user.email,
-        name=user.name,
-        avatar_url=user.avatar_url,
-        is_pat_authenticated=True,
+        user_id=user_id,
+        organisation_id=org_id,
+        email=claims.get("email"),
+        name=claims.get("name"),
+        avatar_url=claims.get("avatar_url"),
     )
-
-
-async def _touch_last_used_at(token_id: uuid.UUID) -> None:
-    try:
-        async with async_session_maker() as session:
-            token = await session.get(ApiTokenModel, token_id)
-            if token is None:
-                return
-            token.last_used_at = datetime.now(timezone.utc)
-            await session.commit()
-    except Exception as exc:  # pragma: no cover - defensive
-        log.warning(
-            "AuthMiddleware: last_used_at update failed for token %s: %s",
-            token_id,
-            exc,
-        )
 
 
 def _find_session_cookie(request: Request) -> Optional[tuple[str, str]]:

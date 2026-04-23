@@ -21,7 +21,6 @@ from api.v1.ppt.endpoints.theme_generate import THEME_ROUTER
 from api.v1.ppt.endpoints.me import ME_ROUTER
 from api.v1.ppt.endpoints.sharing import SHARING_ROUTER
 from api.v1.ppt.endpoints.share_links import SHARE_LINKS_ROUTER
-from api.v1.ppt.endpoints.tokens import TOKENS_ROUTER
 
 
 API_V1_PPT_ROUTER = APIRouter(prefix="/api/v1/ppt")
@@ -50,4 +49,3 @@ API_V1_PPT_ROUTER.include_router(THEME_ROUTER)
 API_V1_PPT_ROUTER.include_router(ME_ROUTER)
 API_V1_PPT_ROUTER.include_router(SHARING_ROUTER)
 API_V1_PPT_ROUTER.include_router(SHARE_LINKS_ROUTER)
-API_V1_PPT_ROUTER.include_router(TOKENS_ROUTER)
