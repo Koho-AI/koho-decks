@@ -39,9 +39,14 @@ async def oauth_as_metadata(response: Response) -> dict:
 
 
 @WELL_KNOWN_ROUTER.get("/.well-known/oauth-protected-resource")
+@WELL_KNOWN_ROUTER.get("/.well-known/oauth-protected-resource/{rest:path}")
 async def oauth_protected_resource_metadata(response: Response) -> dict:
-    # RFC 9728. FastMCP's RequireAuthMiddleware computes this URL from
-    # the TokenVerifier's resource_server_url and advertises it in the
-    # WWW-Authenticate header on 401. Clients fetch it to find the AS.
+    # RFC 9728. FastMCP scopes the resource metadata URL by the MCP
+    # mount path (e.g. /.well-known/oauth-protected-resource/mcp), which
+    # it advertises in the WWW-Authenticate header on 401. Serving the
+    # same document at both the bare path and any sub-path ensures
+    # whichever URL FastMCP picks resolves. The document itself points
+    # to the same protected resource (APP_BASE_URL/mcp) regardless of
+    # which discovery path landed the client here.
     response.headers["Cache-Control"] = "public, max-age=3600"
     return protected_resource_metadata()
