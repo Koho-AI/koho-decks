@@ -128,7 +128,10 @@ class PptxAutoShapeBoxModel(PptxShapeModel):
     shadow: Optional[PptxShadowModel] = None
     position: PptxPositionModel
     text_wrap: bool = True
-    border_radius: Optional[int] = None
+    # Upstream converter emits raw CSS px values (e.g. 10.5, 274.57).
+    # Downstream apply_border_radius_to_shape passes this to
+    # python-pptx's Pt(), which accepts float without issue.
+    border_radius: Optional[float] = None
     paragraphs: Optional[List[PptxParagraphModel]] = None
 
 
