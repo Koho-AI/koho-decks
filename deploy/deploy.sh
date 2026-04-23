@@ -62,12 +62,20 @@ run_health_checks() {
     return 1
 }
 
-# Reclaim disk after a successful deploy. The VPS is shared with sibling
+# Reclaim disk around every deploy. The VPS is shared with sibling
 # services (koban) on the same docker daemon, but `docker image prune`
 # without -a only touches dangling (untagged) images — tagged images like
 # koban:latest and koho-decks:previous are untouched. `until=168h` further
 # restricts the prune to layers older than 7 days, preserving anything we
 # might want to hand-retag for an emergency rollback. Never fatal.
+#
+# We call this BOTH before and after a deploy:
+# - Before: covers the case where a prior deploy failed mid-build and
+#   left garbage behind. The post-deploy prune never ran then, so disk
+#   usage accumulates silently until a future deploy runs out of space
+#   (which is exactly how today's incident happened).
+# - After: reclaims this deploy's own dangling layers once the new
+#   container is up and healthy.
 prune_stale() {
     echo "Pruning docker images + build cache older than 7 days..."
     docker image prune -f --filter "until=168h" || true
@@ -76,6 +84,7 @@ prune_stale() {
 
 case "$mode" in
     deploy)
+        prune_stale
         tag_previous
         echo "Restarting via systemd (build + bring up postgres + production)..."
         systemctl --user restart "$SERVICE"
@@ -100,6 +109,7 @@ case "$mode" in
             echo "No $IMAGE_PREVIOUS found — nothing to roll back to" >&2
             exit 1
         fi
+        prune_stale
         docker tag "$IMAGE_PREVIOUS" "$IMAGE_LATEST"
         systemctl --user restart "$SERVICE"
         if run_health_checks; then
