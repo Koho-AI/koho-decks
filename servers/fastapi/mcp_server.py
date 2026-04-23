@@ -92,14 +92,16 @@ async def main():
         # response. On valid JWT the tool handler runs; on invalid/absent
         # the request is rejected at the Starlette layer without reaching
         # our code.
-        # FastMCP 3.x renamed `resource_server_url` (2.x) to `base_url` but
-        # the semantics are identical — the URL published in the RFC 9728
-        # resource-metadata document that FastMCP auto-wires on 401.
+        # `base_url` is the origin FastMCP uses when constructing the
+        # resource-metadata URL it advertises in WWW-Authenticate on 401.
+        # It appends the MCP mount path itself — passing the origin WITHOUT
+        # /mcp avoids the double-path-segment bug (/.well-known/oauth-
+        # protected-resource/mcp/mcp) that earlier attempts produced.
         auth = JWTVerifier(
             jwks_uri=jwks_uri,
             issuer=app_base_url,
             audience=app_base_url,
-            base_url=f"{app_base_url}/mcp",
+            base_url=app_base_url,
         )
         print(f"DEBUG: Configured JWTVerifier iss={app_base_url} jwks={jwks_uri}")
 
