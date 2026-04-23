@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 
 type Me = {
   name: string | null;
@@ -132,6 +132,25 @@ export default function HeaderUserMenu() {
             <div style={{ fontSize: 12, color: "#5B6A7E" }}>{me.email}</div>
           </div>
           <div style={{ height: 1, background: "rgba(26,35,50,0.08)" }} />
+          <a
+            href="/settings/oauth-clients"
+            role="menuitem"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 12px",
+              background: "transparent",
+              borderRadius: 8,
+              color: "#1A2332",
+              fontSize: 14,
+              fontFamily: "var(--font-manrope), Manrope, sans-serif",
+              textDecoration: "none",
+            }}
+          >
+            <KeyRound size={16} />
+            MCP clients
+          </a>
           <form method="POST" action="/api/auth/signout" style={{ margin: 0 }}>
             <input type="hidden" name="csrfToken" value={csrfToken} />
             <input type="hidden" name="callbackUrl" value="/signin" />
