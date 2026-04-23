@@ -23,11 +23,6 @@ class AuthContext:
     # the X-Koho-Internal-Token header. Such callers have no user/org,
     # but get VIEWER access to any deck so they can render it.
     is_internal_render: bool = False
-    # True when the caller authenticated via a personal access token
-    # (X-Koho-Api-Token) rather than a browser session cookie. PAT-auth
-    # is deliberately excluded from PAT-management endpoints so a leaked
-    # token cannot mint more tokens or revoke existing ones.
-    is_pat_authenticated: bool = False
 
     @property
     def is_authenticated(self) -> bool:

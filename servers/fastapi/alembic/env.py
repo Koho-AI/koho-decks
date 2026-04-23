@@ -29,7 +29,10 @@ from models.sql.organisation import OrganisationModel  # noqa: F401, E402
 from models.sql.membership import MembershipModel  # noqa: F401, E402
 from models.sql.deck_collaborator import DeckCollaboratorModel  # noqa: F401, E402
 from models.sql.invitation import InvitationModel  # noqa: F401, E402
-from models.sql.api_token import ApiTokenModel  # noqa: F401, E402
+from models.sql.oauth_client import OAuthClientModel  # noqa: F401, E402
+from models.sql.oauth_authorization_code import OAuthAuthorizationCodeModel  # noqa: F401, E402
+from models.sql.oauth_refresh_token import OAuthRefreshTokenModel  # noqa: F401, E402
+from models.sql.oauth_consent import OAuthConsentModel  # noqa: F401, E402
 from models.sql.share_link import ShareLinkModel  # noqa: F401, E402
 from models.sql.share_viewer import ShareViewerModel  # noqa: F401, E402
 from models.sql.share_view import ShareViewModel  # noqa: F401, E402

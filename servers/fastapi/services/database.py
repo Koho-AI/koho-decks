@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy import text
 from sqlmodel import SQLModel
 
-from models.sql.api_token import ApiTokenModel
 from models.sql.async_presentation_generation_status import (
     AsyncPresentationGenerationTaskModel,
 )
@@ -17,6 +16,10 @@ from models.sql.image_asset import ImageAsset
 from models.sql.key_value import KeyValueSqlModel
 from models.sql.deck_collaborator import DeckCollaboratorModel
 from models.sql.invitation import InvitationModel
+from models.sql.oauth_client import OAuthClientModel
+from models.sql.oauth_authorization_code import OAuthAuthorizationCodeModel
+from models.sql.oauth_refresh_token import OAuthRefreshTokenModel
+from models.sql.oauth_consent import OAuthConsentModel
 from models.sql.membership import MembershipModel
 from models.sql.otp_challenge import OtpChallengeModel
 from models.sql.share_link import ShareLinkModel
@@ -85,7 +88,10 @@ async def create_db_and_tables():
                     MembershipModel.__table__,
                     DeckCollaboratorModel.__table__,
                     InvitationModel.__table__,
-                    ApiTokenModel.__table__,
+                    OAuthClientModel.__table__,
+                    OAuthAuthorizationCodeModel.__table__,
+                    OAuthRefreshTokenModel.__table__,
+                    OAuthConsentModel.__table__,
                     ShareLinkModel.__table__,
                     ShareViewerModel.__table__,
                     ShareViewModel.__table__,
