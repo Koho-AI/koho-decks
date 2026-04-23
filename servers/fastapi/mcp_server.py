@@ -102,11 +102,21 @@ def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
 
 def _fetch_live_openapi(internal_url: str) -> dict[str, Any]:
     """Fetch FastAPI's live OpenAPI at startup. FastAPI and MCP are
-    spawned in parallel by start.js, so a short retry loop covers the
-    race window where MCP boots first."""
+    spawned in parallel by start.js, so MCP has to tolerate FastAPI
+    being temporarily unreachable. FastAPI's startup includes Alembic
+    migrations which can easily stretch past 30s on a cold container,
+    so the retry budget is generous — 3 minutes total.
+
+    start.js does NOT supervise the MCP process, so if we give up and
+    raise here the MCP HTTP server never comes online and the only
+    symptom is nginx serving 502 on /mcp forever. Retrying for longer
+    is strictly better than crashing: the container's own healthcheck
+    (on FastAPI, port 8000) will fail the deploy anyway if FastAPI
+    never comes up."""
     url = f"{internal_url}/openapi.json"
+    max_attempts = 90  # 90 × 2s = 3 minutes
     last_err: Optional[Exception] = None
-    for attempt in range(1, 11):  # 10 × 2s = 20s budget
+    for attempt in range(1, max_attempts + 1):
         try:
             resp = httpx.get(url, timeout=5.0)
             resp.raise_for_status()
@@ -114,14 +124,15 @@ def _fetch_live_openapi(internal_url: str) -> dict[str, Any]:
         except Exception as exc:
             last_err = exc
             log.info(
-                "mcp: waiting for FastAPI OpenAPI at %s (attempt %d/10): %s",
+                "mcp: waiting for FastAPI OpenAPI at %s (attempt %d/%d): %s",
                 url,
                 attempt,
+                max_attempts,
                 exc,
             )
             time.sleep(2)
     raise RuntimeError(
-        f"Could not fetch {url} after 10 attempts: {last_err}"
+        f"Could not fetch {url} after {max_attempts} attempts: {last_err}"
     )
 
 
