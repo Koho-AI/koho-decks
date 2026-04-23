@@ -19,10 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Drop indexes explicitly before the table so SQLite dev DBs (which
-    # don't cascade index drops) don't choke.
-    op.drop_index("ix_api_tokens_token_hash", table_name="api_tokens")
-    op.drop_index("ix_api_tokens_user_id", table_name="api_tokens")
+    # DROP TABLE cascades to all of the table's indexes and unique-
+    # constraint-backed indexes in both Postgres and SQLite, so we don't
+    # need to enumerate them here. Naming non-existent indexes (as the
+    # first version of this migration did) throws UndefinedObject on
+    # Postgres.
     op.drop_table("api_tokens")
 
 
@@ -44,6 +45,3 @@ def downgrade() -> None:
         sa.UniqueConstraint("token_hash", name="uq_api_tokens_token_hash"),
     )
     op.create_index("ix_api_tokens_user_id", "api_tokens", ["user_id"])
-    op.create_index(
-        "ix_api_tokens_token_hash", "api_tokens", ["token_hash"], unique=True
-    )
