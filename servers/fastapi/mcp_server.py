@@ -1,12 +1,12 @@
 import sys
 import argparse
 import asyncio
-import json
 import logging
 import os
+import time
 import traceback
 from contextvars import ContextVar
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from fastmcp import FastMCP
@@ -15,8 +15,114 @@ from fastmcp.server.auth.providers.jwt import JWTVerifier
 
 log = logging.getLogger(__name__)
 
-with open("openai_spec.json", "r") as f:
-    openapi_spec = json.load(f)
+
+# Whitelist of FastAPI operationIds to expose as MCP tools. FastAPI auto-
+# generates operationIds as "{function_name}_{route_path_underscored}_{method}",
+# which is unwieldy — the EXPOSED_TOOL_NAMES mapping below renames each one
+# to a short, human-friendly MCP tool name.
+#
+# Any new FastAPI endpoint is NOT exposed as an MCP tool by default. To
+# expose something new, add its operationId here and pick a tool name.
+# Entries that no longer match a live operationId are silently dropped —
+# no crash, just a WARNING log at startup.
+EXPOSED_TOOL_NAMES: dict[str, str] = {
+    # ── Deck CRUD + generation ────────────────────────────────────────
+    "get_all_presentations_api_v1_ppt_presentation_all_get": "list_presentations",
+    "get_presentation_api_v1_ppt_presentation__id__get": "get_presentation",
+    "delete_presentation_api_v1_ppt_presentation__id__delete": "delete_presentation",
+    "create_presentation_api_v1_ppt_presentation_create_post": "create_presentation",
+    "generate_presentation_sync_api_v1_ppt_presentation_generate_post": "generate_presentation",
+    "generate_presentation_async_api_v1_ppt_presentation_generate_async_post": "generate_presentation_async",
+    "check_async_presentation_generation_status_api_v1_ppt_presentation_status__id__get": "check_generation_status",
+    "update_presentation_api_v1_ppt_presentation_update_patch": "update_presentation",
+    "edit_presentation_with_new_content_api_v1_ppt_presentation_edit_post": "edit_presentation",
+    "derive_presentation_from_existing_one_api_v1_ppt_presentation_derive_post": "derive_presentation",
+    "export_presentation_as_pptx_or_pdf_api_v1_ppt_presentation_export_post": "export_presentation",
+    # ── Slide-level editing ───────────────────────────────────────────
+    "edit_slide_api_v1_ppt_slide_edit_post": "edit_slide",
+    "edit_slide_html_api_v1_ppt_slide_edit_html_post": "edit_slide_html",
+    # ── Sharing + collaborators ──────────────────────────────────────
+    "invite_collaborator_api_v1_ppt_sharing_invite_post": "invite_collaborator",
+    "list_collaborators_api_v1_ppt_sharing_collaborators__presentation_id__get": "list_collaborators",
+    "revoke_collaborator_api_v1_ppt_sharing_collaborator__collaborator_id__delete": "revoke_collaborator",
+    "shared_with_me_api_v1_ppt_sharing_shared_with_me_get": "shared_with_me",
+    "create_share_link_api_v1_ppt_share_links_post": "create_share_link",
+    "list_share_links_api_v1_ppt_share_links__presentation_id__get": "list_share_links",
+    "revoke_share_link_api_v1_ppt_share_links__link_id__delete": "revoke_share_link",
+    # ── Templates + themes + self ────────────────────────────────────
+    "get_presentations_summary_api_v1_ppt_template_management_summary_get": "list_templates",
+    "get_default_themes_api_v1_ppt_themes_default_get": "list_default_themes",
+    "get_themes_api_v1_ppt_themes_all_get": "list_themes",
+    "get_me_api_v1_ppt_me_get": "get_me",
+}
+
+
+def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    """Return a minimal OpenAPI dict containing only whitelisted operations.
+
+    Components (schemas) are copied wholesale because paths reference them
+    by $ref — trimming unused schemas would require transitive resolution
+    that buys little in return. A WARNING is logged for any whitelisted
+    operationId that doesn't appear in the live spec (typically means an
+    endpoint was renamed or removed and the whitelist is stale)."""
+    kept_paths: dict[str, Any] = {}
+    seen_ids: set[str] = set()
+
+    for path, methods in (spec.get("paths") or {}).items():
+        if not isinstance(methods, dict):
+            continue
+        kept_methods: dict[str, Any] = {}
+        for method, operation in methods.items():
+            if not isinstance(operation, dict):
+                continue
+            op_id = operation.get("operationId")
+            if not op_id or op_id not in EXPOSED_TOOL_NAMES:
+                continue
+            kept_methods[method] = operation
+            seen_ids.add(op_id)
+        if kept_methods:
+            kept_paths[path] = kept_methods
+
+    missing = set(EXPOSED_TOOL_NAMES) - seen_ids
+    if missing:
+        log.warning(
+            "mcp: %d whitelisted operationId(s) not found in live OpenAPI — "
+            "likely renamed or removed: %s",
+            len(missing),
+            sorted(missing),
+        )
+
+    return {
+        "openapi": spec.get("openapi", "3.1.0"),
+        "info": spec.get("info", {"title": "Koho Decks", "version": "1.0.0"}),
+        "paths": kept_paths,
+        "components": spec.get("components") or {},
+    }
+
+
+def _fetch_live_openapi(internal_url: str) -> dict[str, Any]:
+    """Fetch FastAPI's live OpenAPI at startup. FastAPI and MCP are
+    spawned in parallel by start.js, so a short retry loop covers the
+    race window where MCP boots first."""
+    url = f"{internal_url}/openapi.json"
+    last_err: Optional[Exception] = None
+    for attempt in range(1, 11):  # 10 × 2s = 20s budget
+        try:
+            resp = httpx.get(url, timeout=5.0)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            last_err = exc
+            log.info(
+                "mcp: waiting for FastAPI OpenAPI at %s (attempt %d/10): %s",
+                url,
+                attempt,
+                exc,
+            )
+            time.sleep(2)
+    raise RuntimeError(
+        f"Could not fetch {url} after 10 attempts: {last_err}"
+    )
 
 
 # The incoming Authorization: Bearer <jwt> header that FastMCP's
@@ -114,12 +220,24 @@ async def main():
             transport=_BearerForwardingTransport(),
         )
 
+        print("DEBUG: Fetching live FastAPI OpenAPI + filtering to whitelist...")
+        live_spec = _fetch_live_openapi(fastapi_internal)
+        filtered_spec = _filter_openapi_spec(live_spec)
+        n_tools = sum(
+            1
+            for methods in filtered_spec["paths"].values()
+            for op in methods.values()
+            if isinstance(op, dict)
+        )
+        print(f"DEBUG: Exposing {n_tools} whitelisted MCP tool(s)")
+
         print("DEBUG: Creating FastMCP server from OpenAPI spec...")
         mcp = FastMCP.from_openapi(
-            openapi_spec=openapi_spec,
+            openapi_spec=filtered_spec,
             client=api_client,
             name=args.name,
             auth=auth,
+            mcp_names=EXPOSED_TOOL_NAMES,
         )
         print("DEBUG: MCP server created from OpenAPI successfully")
 
