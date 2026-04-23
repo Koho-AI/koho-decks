@@ -152,7 +152,20 @@ async def delete_presentation(
     await sql_session.commit()
 
 
-@PRESENTATION_ROUTER.post("/create", response_model=PresentationModel)
+@PRESENTATION_ROUTER.post(
+    "/create",
+    response_model=PresentationModel,
+    summary="Create an empty presentation stub (no slides).",
+    description=(
+        "Creates an empty presentation record with the caller's preferences "
+        "but DOES NOT generate slides. The returned presentation has no "
+        "outlines, structure, or slides — it's a placeholder.\n\n"
+        "To produce a complete deck in a single call, use "
+        "`generate_presentation` (sync, returns an export path) or "
+        "`generate_presentation_async` (queues the job; poll with "
+        "`check_generation_status`)."
+    ),
+)
 async def create_presentation(
     content: Annotated[str, Body()],
     n_slides: Annotated[int, Body()],
@@ -814,7 +827,15 @@ async def generate_presentation_handler(
     except Exception as e:
         if not isinstance(e, HTTPException):
             traceback.print_exc()
-            e = HTTPException(status_code=500, detail="Presentation generation failed")
+            # Preserve the underlying exception class + message so MCP
+            # callers and UI surfaces get something actionable instead
+            # of a flat "Presentation generation failed" (which buries
+            # the real cause — e.g. an image-provider misconfig or an
+            # LLM 429 — inside server-side logs).
+            e = HTTPException(
+                status_code=500,
+                detail=f"Presentation generation failed: {type(e).__name__}: {str(e)[:500]}",
+            )
 
         api_error_model = APIErrorModel.from_exception(e)
 
@@ -848,9 +869,14 @@ async def generate_presentation_sync(
         return await generate_presentation_handler(
             request, presentation_id, None, sql_session
         )
-    except Exception:
+    except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Presentation generation failed")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Presentation generation failed: {type(e).__name__}: {str(e)[:500]}",
+        )
 
 
 @PRESENTATION_ROUTER.post(
