@@ -11,21 +11,7 @@ from models.presentation_and_path import PresentationAndPath
 from services.pptx_presentation_creator import PptxPresentationCreator
 from services.temp_file_service import TEMP_FILE_SERVICE
 from utils.asset_directory_utils import get_exports_directory
-
-
-# The Next.js export routes call back into FastAPI's auth-gated
-# presentation router via Puppeteer; they identify themselves with this
-# shared secret (see nextjs/app/api/export-as-pdf/route.ts and
-# FastAPI's AuthMiddleware._is_internal_render_request). We forward the
-# same token on our aiohttp call so the inner fetch chain doesn't
-# collapse when the outer request lacks a NextAuth cookie — as is the
-# case for MCP callers.
-_INTERNAL_RENDER_HEADER = "X-Koho-Internal-Token"
-
-
-def _internal_render_headers() -> dict[str, str]:
-    token = os.getenv("INTERNAL_RENDER_TOKEN", "").strip()
-    return {_INTERNAL_RENDER_HEADER: token} if token else {}
+from utils.internal_render import internal_render_headers
 
 
 def _download_url_for(filename: str) -> str | None:
@@ -45,7 +31,11 @@ async def export_presentation(
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"http://localhost/api/presentation_to_pptx_model?id={presentation_id}",
-                headers=_internal_render_headers(),
+                headers=internal_render_headers(),
+                # See get_layout_by_name.py for the rationale — the
+                # Next.js 307 to /signin would otherwise silently land
+                # on a 200 HTML page and fail at JSON parse time.
+                allow_redirects=False,
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
@@ -81,7 +71,8 @@ async def export_presentation(
                 "id": str(presentation_id),
                 "title": sanitize_filename(title or str(uuid.uuid4())),
             },
-            headers=_internal_render_headers(),
+            headers=internal_render_headers(),
+            allow_redirects=False,
         ) as response:
             if response.status != 200:
                 error_text = await response.text()

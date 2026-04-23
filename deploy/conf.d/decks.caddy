@@ -11,6 +11,17 @@ decks.koho.ai {
 	encode gzip
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 
+	# Strip X-Koho-Internal-Token from any inbound public request. The
+	# token grants internal-render auth to both FastAPI
+	# (servers/fastapi/api/middlewares.py) and Next.js
+	# (servers/nextjs/lib/auth.ts); it is only valid on the loopback
+	# path where FastAPI calls sibling services inside the container.
+	# Removing it at the only public ingress point prevents any
+	# forged-header attack from the internet, regardless of whether
+	# the token itself leaks. Defence in depth — the token is a strong
+	# secret, but this is belt-and-braces.
+	request_header -X-Koho-Internal-Token
+
 	# Large request bodies for image uploads + slide content.
 	request_body {
 		max_size 50MB

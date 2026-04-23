@@ -16,6 +16,22 @@ import Google from "next-auth/providers/google";
 
 const KOHO_DOMAIN = "koho.ai";
 
+/**
+ * Constant-time string comparison. Prevents a timing oracle from
+ * learning the internal-render token one byte at a time. Pure-JS so
+ * it works on the Edge runtime where `node:crypto.timingSafeEqual`
+ * may not be available. Mirrors `hmac.compare_digest` used on the
+ * FastAPI side (servers/fastapi/api/middlewares.py).
+ */
+function safeCompareStrings(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 export const authConfig = {
   providers: [
     Google({
@@ -67,7 +83,8 @@ export const authConfig = {
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl } = request;
       const isLoggedIn = !!auth?.user;
       const path = nextUrl.pathname;
 
@@ -96,7 +113,25 @@ export const authConfig = {
       const isPublic = publicPrefixes.some((p) => path.startsWith(p));
 
       if (isPublic) return true;
-      return isLoggedIn;
+      if (isLoggedIn) return true;
+
+      // Internal-render token escape hatch. Parallels FastAPI's
+      // AuthMiddleware._is_internal_render_request. When FastAPI calls
+      // sibling Next.js /api/* routes over loopback (e.g. the async
+      // generation worker fetching /api/template, or the export flow
+      // POSTing to /api/export-as-pdf), it has no NextAuth session —
+      // only a shared secret. Matching the secret grants access.
+      // Fail-closed when the env var is absent so a missing secret can
+      // never act as a wildcard bypass.
+      const expectedToken = process.env.INTERNAL_RENDER_TOKEN;
+      if (expectedToken) {
+        const presented = request.headers.get("x-koho-internal-token");
+        if (presented && safeCompareStrings(presented, expectedToken)) {
+          return true;
+        }
+      }
+
+      return false;
     },
   },
   trustHost: true,
