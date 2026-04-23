@@ -57,6 +57,87 @@ EXPOSED_TOOL_NAMES: dict[str, str] = {
 }
 
 
+# Parameters on create/generate endpoints that take *server-side*
+# filesystem paths. Useful for the Next.js upload flow (which can write
+# to the shared volume first) but nonsense for remote MCP clients, who
+# have no way to place a file at `/app_data/uploads/...`. We strip them
+# from the MCP surface so LLM callers don't hallucinate paths.
+_SERVER_ONLY_PARAM_NAMES: frozenset[str] = frozenset({"file_paths", "files"})
+
+
+def _scrub_schema_props(schema: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of `schema` with server-only property names removed
+    from `properties` and `required`. Handles the two shapes FastAPI
+    emits: an inline object schema OR a schema that references a
+    component via $ref (the caller handles $ref resolution)."""
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return schema
+    removed = _SERVER_ONLY_PARAM_NAMES & props.keys()
+    if not removed:
+        return schema
+    new_props = {k: v for k, v in props.items() if k not in removed}
+    new_required = [r for r in (schema.get("required") or []) if r not in removed]
+    new_schema = {**schema, "properties": new_props}
+    if new_required:
+        new_schema["required"] = new_required
+    else:
+        new_schema.pop("required", None)
+    return new_schema
+
+
+def _scrub_server_only_params(operation: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of `operation` with server-only fields removed from
+    the inline request-body schema. For $ref-shaped bodies the actual
+    scrubbing happens in _scrub_components — this function is a no-op
+    in that case. Leaves query/path params and the underlying REST
+    endpoint untouched — only the MCP tool signature is affected."""
+    request_body = operation.get("requestBody")
+    if not isinstance(request_body, dict):
+        return operation
+    content = request_body.get("content")
+    if not isinstance(content, dict):
+        return operation
+
+    scrubbed_content: dict[str, Any] = {}
+    changed = False
+    for media_type, media in content.items():
+        if not isinstance(media, dict):
+            scrubbed_content[media_type] = media
+            continue
+        schema = media.get("schema")
+        if not isinstance(schema, dict):
+            scrubbed_content[media_type] = media
+            continue
+        new_schema = _scrub_schema_props(schema)
+        if new_schema is not schema:
+            changed = True
+            scrubbed_content[media_type] = {**media, "schema": new_schema}
+        else:
+            scrubbed_content[media_type] = media
+
+    if not changed:
+        return operation
+    new_body = {**request_body, "content": scrubbed_content}
+    return {**operation, "requestBody": new_body}
+
+
+def _scrub_components(components: dict[str, Any]) -> dict[str, Any]:
+    """Strip server-only property names from every component schema.
+    FastAPI emits a `Body_<op>` component for routes with multiple
+    individual `Body()` params, and a named Pydantic-model component
+    for routes that take a request model — both shapes route through
+    `properties` here. Scrubbing is safe because the filtered spec
+    only retains operations we've whitelisted, so every reachable
+    component is an MCP tool's input."""
+    schemas = components.get("schemas")
+    if not isinstance(schemas, dict):
+        return components
+    scrubbed = {name: _scrub_schema_props(s) if isinstance(s, dict) else s
+                for name, s in schemas.items()}
+    return {**components, "schemas": scrubbed}
+
+
 def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
     """Return a minimal OpenAPI dict containing only whitelisted operations.
 
@@ -64,7 +145,11 @@ def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
     by $ref — trimming unused schemas would require transitive resolution
     that buys little in return. A WARNING is logged for any whitelisted
     operationId that doesn't appear in the live spec (typically means an
-    endpoint was renamed or removed and the whitelist is stale)."""
+    endpoint was renamed or removed and the whitelist is stale).
+
+    Server-only request-body fields (see _SERVER_ONLY_PARAM_NAMES) are
+    stripped so MCP clients don't see parameters they can't meaningfully
+    use."""
     kept_paths: dict[str, Any] = {}
     seen_ids: set[str] = set()
 
@@ -78,7 +163,7 @@ def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
             op_id = operation.get("operationId")
             if not op_id or op_id not in EXPOSED_TOOL_NAMES:
                 continue
-            kept_methods[method] = operation
+            kept_methods[method] = _scrub_server_only_params(operation)
             seen_ids.add(op_id)
         if kept_methods:
             kept_paths[path] = kept_methods
@@ -96,7 +181,7 @@ def _filter_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
         "openapi": spec.get("openapi", "3.1.0"),
         "info": spec.get("info", {"title": "Koho Decks", "version": "1.0.0"}),
         "paths": kept_paths,
-        "components": spec.get("components") or {},
+        "components": _scrub_components(spec.get("components") or {}),
     }
 
 
@@ -280,13 +365,11 @@ async def main():
                 finally:
                     _current_bearer.reset(cv)
 
-        uvicorn_config = {"reload": True}
         print(f"DEBUG: Starting MCP server on host=127.0.0.1, port={args.port}")
         await mcp.run_http_async(
             transport="http",
             host="127.0.0.1",
             port=args.port,
-            uvicorn_config=uvicorn_config,
             middleware=[ASGIMiddleware(CaptureBearerMiddleware)],
         )
         print("DEBUG: MCP server run_http_async completed")
