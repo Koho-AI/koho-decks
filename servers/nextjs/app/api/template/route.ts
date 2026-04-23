@@ -35,6 +35,19 @@ export async function GET(request: Request) {
     await page.setViewport({ width: 1280, height: 720 });
     page.setDefaultNavigationTimeout(300000);
     page.setDefaultTimeout(300000);
+
+    // /schema is auth-gated by the NextAuth middleware. Puppeteer has
+    // no session cookie, so without a token it lands on /signin and
+    // the [data-layouts] selector below times out. Present the same
+    // X-Koho-Internal-Token that lib/auth.ts recognises as internal
+    // render identity (mirrors the pdf-maker/export-as-pdf routes).
+    const internalToken = process.env.INTERNAL_RENDER_TOKEN;
+    if (internalToken) {
+      await page.setExtraHTTPHeaders({
+        "X-Koho-Internal-Token": internalToken,
+      });
+    }
+
     await page.goto(schemaPageUrl, {
       waitUntil: "networkidle0",
       timeout: 300000,
@@ -76,8 +89,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json(response);
   } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    console.error("template route: scrape failed", err);
     return NextResponse.json(
-      { error: "Failed to fetch or parse client page" },
+      { error: `Failed to fetch or parse client page: ${message.slice(0, 400)}` },
       { status: 500 }
     );
   } finally {

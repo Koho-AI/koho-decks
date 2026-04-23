@@ -48,15 +48,47 @@ async def export_presentation(
                     )
                 pptx_model_data = await response.json()
 
-        pptx_model = PptxPresentationModel(**pptx_model_data)
+        # Surface the real failure class if pydantic rejects the
+        # upstream payload or PptxPresentationCreator chokes on an
+        # element — bare Exceptions here bubble to FastAPI as a flat
+        # 500 with no detail, making remote debugging impossible.
+        try:
+            pptx_model = PptxPresentationModel(**pptx_model_data)
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"Upstream pptx model failed validation: "
+                    f"{type(e).__name__}: {str(e)[:400]}"
+                ),
+            )
+
         temp_dir = TEMP_FILE_SERVICE.create_temp_dir()
         pptx_creator = PptxPresentationCreator(pptx_model, temp_dir)
-        await pptx_creator.create_ppt()
+        try:
+            await pptx_creator.create_ppt()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"PPTX creation failed: "
+                    f"{type(e).__name__}: {str(e)[:400]}"
+                ),
+            )
 
         export_directory = get_exports_directory()
         filename = f"{sanitize_filename(title or str(uuid.uuid4()))}.pptx"
         pptx_path = os.path.join(export_directory, filename)
-        pptx_creator.save(pptx_path)
+        try:
+            pptx_creator.save(pptx_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"PPTX save failed: "
+                    f"{type(e).__name__}: {str(e)[:400]}"
+                ),
+            )
 
         return PresentationAndPath(
             presentation_id=presentation_id,
