@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Annotated, List, Literal, Optional
+from typing import Annotated, List, Literal, Optional, Union
 from annotated_types import Len
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pptx.util import Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE, MSO_CONNECTOR_TYPE
@@ -157,11 +157,24 @@ class PptxConnectorModel(PptxShapeModel):
 class PptxSlideModel(BaseModel):
     background: Optional[PptxFillModel] = None
     note: Optional[str] = None
+    # Discriminated union keyed on `shape_type`. Without the
+    # discriminator, pydantic's default smart-union mode tries every
+    # member and reports errors for each when none validate — which
+    # drowns the actual failure in noise (e.g. a malformed autoshape
+    # surfaces 48 errors across TextBox/AutoShape/Picture/Connector
+    # instead of the 2-3 that apply to AutoShape). Using `Field(
+    # discriminator=...)` picks the model by its literal tag and
+    # produces focused error messages.
     shapes: List[
-        PptxTextBoxModel
-        | PptxAutoShapeBoxModel
-        | PptxConnectorModel
-        | PptxPictureBoxModel
+        Annotated[
+            Union[
+                PptxTextBoxModel,
+                PptxAutoShapeBoxModel,
+                PptxConnectorModel,
+                PptxPictureBoxModel,
+            ],
+            Field(discriminator="shape_type"),
+        ]
     ]
 
 

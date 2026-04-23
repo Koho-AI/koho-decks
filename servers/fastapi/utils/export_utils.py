@@ -55,11 +55,16 @@ async def export_presentation(
         try:
             pptx_model = PptxPresentationModel(**pptx_model_data)
         except Exception as e:
+            # Bump the truncation budget so ValidationError details
+            # aren't cut off mid-field. Pydantic v2's message includes
+            # input values for each failure, so a handful of shape
+            # errors can easily exceed 400 chars. 2000 is still safe
+            # to put in a FastAPI response body.
             raise HTTPException(
                 status_code=502,
                 detail=(
                     f"Upstream pptx model failed validation: "
-                    f"{type(e).__name__}: {str(e)[:400]}"
+                    f"{type(e).__name__}: {str(e)[:2000]}"
                 ),
             )
 
