@@ -86,6 +86,18 @@ just rollback-remote   # swap koho-decks:previous back to :latest + restart
 
 The MCP server at `https://decks.koho.ai/mcp` exposes Koho Decks tools to any MCP-compatible client — generate decks, list presentations, manage slides — authenticated as your Koho account via OAuth 2.1. No tokens to create or manage.
 
+### Exposed tools
+
+The MCP server exposes a curated subset of the FastAPI surface as MCP tools:
+
+- **Presentations** — `list_presentations`, `get_presentation`, `create_presentation`, `generate_presentation` (+ async variant + status check), `update_presentation`, `edit_presentation`, `derive_presentation`, `delete_presentation`, `export_presentation`
+- **Slides** — `edit_slide`, `edit_slide_html`
+- **Sharing** — `invite_collaborator`, `list_collaborators`, `revoke_collaborator`, `shared_with_me`, `create_share_link`, `list_share_links`, `revoke_share_link`
+- **Templates + themes** — `list_templates`, `list_default_themes`, `list_themes`
+- **Self** — `get_me`
+
+The whitelist lives in `servers/fastapi/mcp_server.py` (see `EXPOSED_TOOL_NAMES`). Rendering-pipeline internals, provider/LLM proxies, and auth plumbing are intentionally not exposed.
+
 ### How it works
 
 1. Point your MCP client at `https://decks.koho.ai/mcp` — no headers, no tokens.
