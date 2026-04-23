@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { notify } from "@/components/ui/sonner";
@@ -17,6 +17,7 @@ const ConsentPage: React.FC = () => {
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const params: ConsentSubmitPayload | null = useMemo(() => {
     const clientId = searchParams.get("client_id");
@@ -69,7 +70,37 @@ const ConsentPage: React.FC = () => {
     try {
       setSubmitting(true);
       const { redirect_url } = await OAuthClientsApi.submitConsent(params);
-      window.location.href = redirect_url;
+
+      // Hand the auth code to the client's local callback server via a
+      // no-cors fetch. Native MCP clients (Claude Desktop, Claude Code,
+      // Cursor) listen on a loopback port and only care about receiving
+      // the code — they don't set CORS headers, so the browser treats
+      // this as an opaque request. Once fired, the client has the code
+      // and we can close the tab ourselves without ever showing the
+      // client's own (usually unstyled) success page.
+      try {
+        await fetch(redirect_url, { mode: "no-cors", credentials: "omit" });
+      } catch {
+        // Non-fatal: if the fetch fails (e.g. localhost server already
+        // closed, extreme network sandbox), fall through to the hard
+        // navigation below so the user isn't stranded.
+      }
+
+      setSuccess(true);
+
+      // Attempt to close the tab after a beat. window.close() only works
+      // when the tab was opened programmatically (some MCP clients do this
+      // via window.open, others via OS `open`). If the browser refuses,
+      // we fall back to the hard navigation so Claude's own callback page
+      // takes over and the user can close it themselves.
+      setTimeout(() => {
+        window.close();
+        // Still here? Browser refused the close — do the navigation so
+        // the client's callback server definitely processes the code.
+        setTimeout(() => {
+          window.location.href = redirect_url;
+        }, 400);
+      }, 900);
     } catch (err) {
       notify.error(
         "Could not complete authorization",
@@ -78,6 +109,24 @@ const ConsentPage: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="max-w-xl mx-auto px-6 py-20 font-syne text-center">
+        <div className="w-14 h-14 mx-auto mb-5 rounded-full bg-[#E6FBF1] flex items-center justify-center">
+          <CheckCircle2 className="w-7 h-7 text-[#00C278]" />
+        </div>
+        <h1 className="text-[22px] font-unbounded tracking-[-0.66px] text-black mb-3">
+          Authorization complete
+        </h1>
+        <p className="text-sm text-[#3A3A3A] max-w-sm mx-auto leading-relaxed">
+          <span className="font-medium text-black">{clientName}</span> can now
+          act as you on Koho Decks. You can close this tab and return to your
+          MCP client.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto px-6 py-16 font-syne">
@@ -96,25 +145,6 @@ const ConsentPage: React.FC = () => {
         able to list, create, edit, and export your presentations — the same
         operations you can perform in the web app.
       </p>
-
-      <div className="border border-[#E1E1E5] rounded-lg p-4 mb-6 bg-[#F9FAFB]">
-        <dl className="text-xs text-[#3A3A3A] space-y-1.5">
-          <div className="flex justify-between">
-            <dt>Client ID</dt>
-            <dd className="font-mono text-black">{params.client_id}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Redirect URL</dt>
-            <dd className="font-mono text-black break-all max-w-[60%] text-right">
-              {params.redirect_uri}
-            </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Scope</dt>
-            <dd className="font-mono text-black">{params.scope}</dd>
-          </div>
-        </dl>
-      </div>
 
       <p className="text-xs text-[#6B7280] mb-6">
         You can revoke this authorization at any time from{" "}
