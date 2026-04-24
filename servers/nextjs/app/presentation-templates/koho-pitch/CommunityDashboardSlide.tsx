@@ -66,10 +66,10 @@ const CommunityDashboardSlide: React.FC<{ data?: Partial<SlideData> }> = ({ data
                     </h2>
                     <p style={{
                         fontFamily: "'Manrope', sans-serif",
-                        fontSize: '23px',
-                        fontWeight: 300,
-                        lineHeight: 1.5,
-                        color: t.inkDim,
+                        fontSize: '30px',
+                        fontWeight: 400,
+                        lineHeight: 1.45,
+                        color: t.ink,
                         maxWidth: '42ch',
                     }}>
                         {data?.subtitle || 'Event attendance, member activity, and community health indicators across every location.'}

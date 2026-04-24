@@ -36,10 +36,10 @@ const contourPositions: Record<
   thesis: {
     _formFile: "form-c-plateau.svg",
     top: "-15%",
-    left: "-32%",
+    right: "-32%",
     width: "72%",
     height: "130%",
-    transform: "rotate(-4deg)",
+    transform: "rotate(4deg) scaleX(-1)",
   } as any,
   mark: {
     _formFile: "form-a-hill.svg",

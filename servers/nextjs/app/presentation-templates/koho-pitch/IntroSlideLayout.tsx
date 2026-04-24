@@ -81,10 +81,10 @@ const IntroSlideLayout: React.FC<{ data?: Partial<IntroData> }> = ({ data }) => 
                 </h1>
                 <p style={{
                     fontFamily: "'Manrope', sans-serif",
-                    fontWeight: 300,
-                    fontSize: '33px',
+                    fontWeight: 400,
+                    fontSize: '36px',
                     lineHeight: 1.4,
-                    color: t.inkDim,
+                    color: t.ink,
                     maxWidth: '42ch',
                     marginTop: '27px',
                 }}>

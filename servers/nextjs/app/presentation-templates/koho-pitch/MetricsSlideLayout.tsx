@@ -46,8 +46,9 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
     const theme: ThemeMode = ((data as any)?.__theme__ === 'light') ? 'light' : 'dark'
     const t = getTheme(theme)
 
-    const title = data?.title || 'The numbers that matter.'
-    const metrics = data?.metrics || [
+    const title = data?.title ?? 'The numbers that matter.'
+    const subtitle = data?.subtitle ?? 'Live portfolio metrics. No spreadsheet required.'
+    const metrics = data?.metrics ?? [
         { value: '94%', label: 'Portfolio occupancy', description: 'Across all managed locations, updated in real time.' },
         { value: '£2.4M', label: 'Monthly recurring revenue', description: 'Connected from PMS, CRM, and billing in one view.' },
         { value: '12', label: 'Renewals at risk', description: 'Surfaced 90 days out. Each with a recommended action.' },
@@ -82,18 +83,16 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                 }}>
                     {title}
                 </h2>
-                {data?.subtitle && (
-                    <p style={{
-                        fontFamily: "'Manrope', sans-serif",
-                        fontSize: '23px',
-                        fontWeight: 300,
-                        lineHeight: 1.5,
-                        color: t.inkDim,
-                        maxWidth: '60ch',
-                    }}>
-                        {data.subtitle}
-                    </p>
-                )}
+                <p style={{
+                    fontFamily: "'Manrope', sans-serif",
+                    fontSize: '32px',
+                    fontWeight: 400,
+                    lineHeight: 1.45,
+                    color: t.ink,
+                    maxWidth: '60ch',
+                }}>
+                    {subtitle}
+                </p>
             </div>
 
             {/* Stat cards */}
@@ -153,11 +152,11 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                         </span>
 
                         {/* Label + description */}
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '9px', position: 'relative' as const }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '12px', position: 'relative' as const }}>
                             <h5 style={{
                                 fontFamily: "'Manrope', sans-serif",
-                                fontWeight: 500,
-                                fontSize: '27px',
+                                fontWeight: 600,
+                                fontSize: '32px',
                                 color: t.ink,
                                 letterSpacing: '-0.005em',
                             }}>
@@ -165,8 +164,8 @@ const MetricsSlideLayout: React.FC<{ data?: Partial<MetricsData> }> = ({ data })
                             </h5>
                             <p style={{
                                 fontFamily: "'Manrope', sans-serif",
-                                fontSize: '20px',
-                                fontWeight: 300,
+                                fontSize: '22px',
+                                fontWeight: 400,
                                 lineHeight: 1.5,
                                 color: t.inkDim,
                             }}>

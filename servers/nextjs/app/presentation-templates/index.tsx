@@ -464,6 +464,8 @@ export function getLayoutByLayoutId(layout: string): TemplateWithData | undefine
 // Core layouts
 import KohoIntroSlideLayout, { Schema as KohoIntroSchema, layoutId as KohoIntroId, layoutName as KohoIntroName, layoutDescription as KohoIntroDesc } from "./koho-pitch/IntroSlideLayout";
 import KohoBulletPointsSlideLayout, { Schema as KohoBulletPointsSchema, layoutId as KohoBulletPointsId, layoutName as KohoBulletPointsName, layoutDescription as KohoBulletPointsDesc } from "./koho-pitch/BulletPointsSlideLayout";
+import KohoBulletListSlideLayout, { Schema as KohoBulletListSchema, layoutId as KohoBulletListId, layoutName as KohoBulletListName, layoutDescription as KohoBulletListDesc } from "./koho-pitch/BulletListSlideLayout";
+import KohoBulletListSplitSlideLayout, { Schema as KohoBulletListSplitSchema, layoutId as KohoBulletListSplitId, layoutName as KohoBulletListSplitName, layoutDescription as KohoBulletListSplitDesc } from "./koho-pitch/BulletListSplitSlideLayout";
 import KohoMetricsSlideLayout, { Schema as KohoMetricsSchema, layoutId as KohoMetricsId, layoutName as KohoMetricsName, layoutDescription as KohoMetricsDesc } from "./koho-pitch/MetricsSlideLayout";
 import KohoPricingSlideLayout, { Schema as KohoPricingSchema, layoutId as KohoPricingId, layoutName as KohoPricingName, layoutDescription as KohoPricingDesc } from "./koho-pitch/PricingSlideLayout";
 
@@ -501,6 +503,8 @@ export const kohoTemplates: TemplateWithData[] = [
     // Core layouts
     createTemplateEntry(KohoIntroSlideLayout, KohoIntroSchema, KohoIntroId, KohoIntroName, KohoIntroDesc, "koho-pitch", "IntroSlideLayout"),
     createTemplateEntry(KohoBulletPointsSlideLayout, KohoBulletPointsSchema, KohoBulletPointsId, KohoBulletPointsName, KohoBulletPointsDesc, "koho-pitch", "BulletPointsSlideLayout"),
+    createTemplateEntry(KohoBulletListSlideLayout, KohoBulletListSchema, KohoBulletListId, KohoBulletListName, KohoBulletListDesc, "koho-pitch", "BulletListSlideLayout"),
+    createTemplateEntry(KohoBulletListSplitSlideLayout, KohoBulletListSplitSchema, KohoBulletListSplitId, KohoBulletListSplitName, KohoBulletListSplitDesc, "koho-pitch", "BulletListSplitSlideLayout"),
     createTemplateEntry(KohoMetricsSlideLayout, KohoMetricsSchema, KohoMetricsId, KohoMetricsName, KohoMetricsDesc, "koho-pitch", "MetricsSlideLayout"),
     createTemplateEntry(KohoPricingSlideLayout, KohoPricingSchema, KohoPricingId, KohoPricingName, KohoPricingDesc, "koho-pitch", "PricingSlideLayout"),
     // Showcase layouts
@@ -564,6 +568,8 @@ const kohoLightTemplates: TemplateWithData[] = [
     // Core layouts
     createTemplateEntry(wrapLight(KohoIntroSlideLayout), KohoIntroSchema, `${KohoIntroId}-light`, `${KohoIntroName} (Light)`, KohoIntroDesc, "koho-pitch-light", "IntroSlideLayout"),
     createTemplateEntry(wrapLight(KohoBulletPointsSlideLayout), KohoBulletPointsSchema, `${KohoBulletPointsId}-light`, `${KohoBulletPointsName} (Light)`, KohoBulletPointsDesc, "koho-pitch-light", "BulletPointsSlideLayout"),
+    createTemplateEntry(wrapLight(KohoBulletListSlideLayout), KohoBulletListSchema, `${KohoBulletListId}-light`, `${KohoBulletListName} (Light)`, KohoBulletListDesc, "koho-pitch-light", "BulletListSlideLayout"),
+    createTemplateEntry(wrapLight(KohoBulletListSplitSlideLayout), KohoBulletListSplitSchema, `${KohoBulletListSplitId}-light`, `${KohoBulletListSplitName} (Light)`, KohoBulletListSplitDesc, "koho-pitch-light", "BulletListSplitSlideLayout"),
     createTemplateEntry(wrapLight(KohoMetricsSlideLayout), KohoMetricsSchema, `${KohoMetricsId}-light`, `${KohoMetricsName} (Light)`, KohoMetricsDesc, "koho-pitch-light", "MetricsSlideLayout"),
     createTemplateEntry(wrapLight(KohoPricingSlideLayout), KohoPricingSchema, `${KohoPricingId}-light`, `${KohoPricingName} (Light)`, KohoPricingDesc, "koho-pitch-light", "PricingSlideLayout"),
     // Showcase

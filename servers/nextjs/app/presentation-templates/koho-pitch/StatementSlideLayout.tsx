@@ -77,10 +77,10 @@ const StatementSlideLayout: React.FC<{ data?: Partial<StatementData> }> = ({ dat
                 {subtitle && (
                     <p style={{
                         fontFamily: "'Manrope', sans-serif",
-                        fontSize: '23px',
-                        fontWeight: 300,
-                        lineHeight: 1.5,
-                        color: t.inkDim,
+                        fontSize: '30px',
+                        fontWeight: 400,
+                        lineHeight: 1.45,
+                        color: t.ink,
                         maxWidth: '54ch',
                         marginTop: '12px',
                         marginBottom: '36px',
