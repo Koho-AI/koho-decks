@@ -51,6 +51,7 @@ EXPOSED_TOOL_NAMES: dict[str, str] = {
     "revoke_share_link_api_v1_ppt_share_links__link_id__delete": "revoke_share_link",
     # ── Templates + themes + self ────────────────────────────────────
     "get_presentations_summary_api_v1_ppt_template_management_summary_get": "list_templates",
+    "list_template_layouts_api_v1_ppt_template_layouts__template__get": "list_template_layouts",
     "get_default_themes_api_v1_ppt_themes_default_get": "list_default_themes",
     "get_themes_api_v1_ppt_themes_all_get": "list_themes",
     "get_me_api_v1_ppt_me_get": "get_me",

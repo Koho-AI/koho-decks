@@ -61,7 +61,9 @@ from utils.llm_calls.generate_slide_content import (
     get_slide_content_from_type_and_outline,
 )
 from utils.ppt_utils import (
+    apply_variety_bias,
     get_presentation_title_from_outlines,
+    resolve_layout_id_to_index,
     select_toc_or_list_slide_layout_index,
 )
 from utils.process_slides import (
@@ -501,8 +503,26 @@ async def check_if_api_request_is_valid(
     presentation_id = uuid.uuid4()
     print(f"Presentation ID: {presentation_id}")
 
-    # Making sure either content, slides markdown or files is provided
-    if not (request.content or request.slides_markdown or request.files):
+    # Reject mutually exclusive inputs early — sending both `slides` and
+    # `slides_markdown` is almost always a bug (e.g. an agent migrating
+    # between the deprecated and new shapes), and silently picking one
+    # would hide it.
+    if request.slides and request.slides_markdown:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Provide either `slides` (structured) or `slides_markdown` "
+                "(deprecated), not both."
+            ),
+        )
+
+    # Making sure either content, slides markdown, structured slides, or files is provided
+    if not (
+        request.content
+        or request.slides_markdown
+        or request.slides
+        or request.files
+    ):
         raise HTTPException(
             status_code=400,
             detail="Either content or slides markdown or files is required to generate presentation",
@@ -545,10 +565,29 @@ async def generate_presentation_handler(
 ):
     try:
         using_slides_markdown = False
+        # Per-slide explicit layout overrides, indexed by slide position.
+        # Populated only when the caller used the structured `slides` field.
+        # `None` at index i means "let the picker choose for that slide".
+        explicit_layout_ids: List[Optional[str]] = []
+        # Optional explicit speaker notes from the structured slides
+        # input. `None` means "let the LLM generate one".
+        explicit_speaker_notes: List[Optional[str]] = []
 
-        if request.slides_markdown:
+        # The structured `slides` field is the new shape — promote it into
+        # the same `slides_markdown` code path so the rest of the handler
+        # doesn't have to branch. Layout overrides are kept on the side
+        # and applied after the picker runs.
+        if request.slides:
+            using_slides_markdown = True
+            request.slides_markdown = [s.markdown for s in request.slides]
+            explicit_layout_ids = [s.layout for s in request.slides]
+            explicit_speaker_notes = [s.speaker_note for s in request.slides]
+            request.n_slides = len(request.slides)
+        elif request.slides_markdown:
             using_slides_markdown = True
             request.n_slides = len(request.slides_markdown)
+            explicit_layout_ids = [None] * len(request.slides_markdown)
+            explicit_speaker_notes = [None] * len(request.slides_markdown)
 
         if not using_slides_markdown:
             additional_context = ""
@@ -639,9 +678,47 @@ async def generate_presentation_handler(
         layout_model = await get_layout_by_name(request.template)
         total_slide_layouts = len(layout_model.slides)
 
+        # Resolve any per-slide layout ids the agent supplied. We do this
+        # BEFORE generating structure so we can validate the ids loudly
+        # (agents shouldn't have to wait for a full generation to find
+        # out a layout id was typo'd).
+        explicit_layout_indices: List[Optional[int]] = []
+        if explicit_layout_ids:
+            # Pad out to total_outlines in case the caller supplied
+            # fewer entries than slides (defensive — shouldn't happen
+            # given how we built the list above, but keep parity with
+            # the rest of the handler which is tolerant of length skew).
+            for raw_id in explicit_layout_ids[:total_outlines]:
+                if raw_id is None:
+                    explicit_layout_indices.append(None)
+                    continue
+                idx = resolve_layout_id_to_index(layout_model, raw_id)
+                if idx is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Unknown layout id '{raw_id}' for template "
+                            f"'{request.template}'. Call "
+                            f"list_template_layouts('{request.template}') "
+                            f"to see valid ids."
+                        ),
+                    )
+                explicit_layout_indices.append(idx)
+            while len(explicit_layout_indices) < total_outlines:
+                explicit_layout_indices.append(None)
+        else:
+            explicit_layout_indices = [None] * total_outlines
+
         # Generate Structure
         if layout_model.ordered:
             presentation_structure = layout_model.to_presentation_structure()
+        elif all(idx is not None for idx in explicit_layout_indices):
+            # Every slide has an explicit layout — skip the LLM entirely.
+            # This is the path taken by agents that did the work of
+            # picking layouts up front via list_template_layouts.
+            presentation_structure = PresentationStructureModel(
+                slides=[idx for idx in explicit_layout_indices],  # type: ignore[misc]
+            )
         else:
             presentation_structure: PresentationStructureModel = (
                 await generate_presentation_structure(
@@ -660,6 +737,17 @@ async def generate_presentation_handler(
                 continue
             if presentation_structure.slides[index] >= total_slide_layouts:
                 presentation_structure.slides[index] = random_slide_index
+
+        # Honour explicit per-slide layout overrides — these always win,
+        # regardless of what the LLM picker proposed. Then apply the
+        # variety bias to the remaining auto-picked slots so we don't
+        # end up with bullet-list six times in a row.
+        if not layout_model.ordered:
+            presentation_structure.slides = apply_variety_bias(
+                presentation_structure.slides,
+                explicit_layout_indices,
+                total_slide_layouts,
+            )
 
         # Injecting table of contents to the presentation structure and outlines
         if request.include_table_of_contents and not using_slides_markdown:
@@ -755,12 +843,22 @@ async def generate_presentation_handler(
             for offset, slide_content in enumerate(batch_contents):
                 i = start + offset
                 slide_layout = slide_layouts[i]
+                # Honour an explicit speaker_note from the structured
+                # slides input — it's the agent's chance to override the
+                # LLM-generated note, useful when the deck is being
+                # produced from a script and the notes are already in
+                # the agent's hand.
+                explicit_note = (
+                    explicit_speaker_notes[i]
+                    if i < len(explicit_speaker_notes)
+                    else None
+                )
                 slide = SlideModel(
                     presentation=presentation_id,
                     layout_group=layout_model.name,
                     layout=slide_layout.id,
                     index=i,
-                    speaker_note=slide_content.get("__speaker_note__"),
+                    speaker_note=explicit_note or slide_content.get("__speaker_note__"),
                     content=slide_content,
                 )
                 slides.append(slide)
@@ -859,7 +957,27 @@ async def generate_presentation_handler(
             raise e
 
 
-@PRESENTATION_ROUTER.post("/generate", response_model=PresentationPathAndEditPath)
+@PRESENTATION_ROUTER.post(
+    "/generate",
+    response_model=PresentationPathAndEditPath,
+    summary="Generate a complete presentation synchronously and return the export path.",
+    description=(
+        "Generate a complete deck end-to-end and return the path to the "
+        "exported file (pptx or pdf). Blocks until generation finishes — "
+        "use `generate_presentation_async` for long jobs.\n\n"
+        "Templates contain multiple layouts (e.g. `koho-pitch` has ~28: "
+        "intro, statement, two-column, bullet-list, bullet-list-split, "
+        "bullet-points, timeline, metrics, table, the dashboard family, "
+        "CTA, etc). To target specific layouts per slide, call "
+        "`list_template_layouts(template)` first to see what's available, "
+        "then specify a layout per slide via the structured `slides` "
+        "field: `[{markdown, layout?, speaker_note?}]`. When `layout` is "
+        "omitted on a slide the auto-picker chooses, biased toward "
+        "variety so consecutive slides don't repeat the same layout.\n\n"
+        "`slides_markdown` is still accepted but DEPRECATED — it can't "
+        "carry per-slide layout overrides."
+    ),
+)
 async def generate_presentation_sync(
     request: GeneratePresentationRequest,
     sql_session: AsyncSession = Depends(get_async_session),
@@ -880,7 +998,26 @@ async def generate_presentation_sync(
 
 
 @PRESENTATION_ROUTER.post(
-    "/generate/async", response_model=AsyncPresentationGenerationTaskModel
+    "/generate/async",
+    response_model=AsyncPresentationGenerationTaskModel,
+    summary="Queue a presentation for asynchronous generation.",
+    description=(
+        "Queue a deck for generation and return immediately with a task "
+        "id. Poll `check_generation_status` for progress and the final "
+        "export path. Prefer this over `generate_presentation` for any "
+        "deck large enough that the HTTP timeout is a risk.\n\n"
+        "Templates contain multiple layouts (e.g. `koho-pitch` has ~28: "
+        "intro, statement, two-column, bullet-list, bullet-list-split, "
+        "bullet-points, timeline, metrics, table, the dashboard family, "
+        "CTA, etc). To target specific layouts per slide, call "
+        "`list_template_layouts(template)` first to see what's available, "
+        "then specify a layout per slide via the structured `slides` "
+        "field: `[{markdown, layout?, speaker_note?}]`. When `layout` is "
+        "omitted on a slide the auto-picker chooses, biased toward "
+        "variety so consecutive slides don't repeat the same layout.\n\n"
+        "`slides_markdown` is still accepted but DEPRECATED — it can't "
+        "carry per-slide layout overrides."
+    ),
 )
 async def generate_presentation_async(
     request: GeneratePresentationRequest,
