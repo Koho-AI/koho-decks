@@ -72,6 +72,12 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM=${SMTP_FROM}
       - APP_BASE_URL=${APP_BASE_URL}
+      # OAuth token lifetimes — optional, fall back to safe defaults in
+      # services/oauth_server.py (24h access, 90d refresh) when unset.
+      # Override via .env if ops want to tighten or relax the policy
+      # without a code change.
+      - OAUTH_ACCESS_TOKEN_TTL_SECONDS=${OAUTH_ACCESS_TOKEN_TTL_SECONDS}
+      - OAUTH_REFRESH_TOKEN_TTL_SECONDS=${OAUTH_REFRESH_TOKEN_TTL_SECONDS}
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

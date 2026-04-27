@@ -26,9 +26,62 @@ from services.jwt_signing import sign_jwt
 log = logging.getLogger(__name__)
 
 
-ACCESS_TOKEN_TTL_SECONDS = 3600  # 1 hour
-REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 3600  # 30 days
+# Access tokens default to 24 hours so an MCP installation that goes idle
+# during a working day stays usable without a manual reconnect. Active
+# sessions auto-refresh long before expiry via the refresh-token grant
+# (rotated on every use), so a continuously-used MCP installation is
+# effectively permanent until the user revokes it. Both TTLs are
+# overridable through env vars (OAUTH_ACCESS_TOKEN_TTL_SECONDS and
+# OAUTH_REFRESH_TOKEN_TTL_SECONDS) for ops who want to relax or tighten
+# the policy without a code change. See docker-compose.yml for the
+# wiring into the production container.
+_DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 24 * 3600  # 24 hours
+_DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 3600  # 90 days
+
+# Re-exported as constants for callers that just want the default without
+# the env-aware getter — keep them in sync with the helpers below.
+ACCESS_TOKEN_TTL_SECONDS = _DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+REFRESH_TOKEN_TTL_SECONDS = _DEFAULT_REFRESH_TOKEN_TTL_SECONDS
 AUTH_CODE_TTL_SECONDS = 600  # 10 minutes
+
+
+def _ttl_from_env(name: str, default: int) -> int:
+    """Read a positive-int TTL from `name`, falling back to `default`.
+
+    Non-numeric or non-positive values log a warning and use the default
+    rather than crashing the auth server — a typo in ops' .env file
+    must not take down login."""
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        log.warning("%s=%r is not an integer; using default %ds", name, raw, default)
+        return default
+    if v <= 0:
+        log.warning("%s=%d must be > 0; using default %ds", name, v, default)
+        return default
+    return v
+
+
+def access_token_ttl_seconds() -> int:
+    """Resolve the JWT access-token lifetime in seconds at issuance time.
+    Reads OAUTH_ACCESS_TOKEN_TTL_SECONDS dynamically so ops can roll out
+    a new value by restarting the container — no rebuild required."""
+    return _ttl_from_env(
+        "OAUTH_ACCESS_TOKEN_TTL_SECONDS", _DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+    )
+
+
+def refresh_token_ttl_seconds() -> int:
+    """Resolve the refresh-token lifetime in seconds. Refresh tokens
+    rotate on every use, so this is the maximum *idle* gap before an
+    MCP installation must re-authorize."""
+    return _ttl_from_env(
+        "OAUTH_REFRESH_TOKEN_TTL_SECONDS", _DEFAULT_REFRESH_TOKEN_TTL_SECONDS
+    )
+
 
 CLIENT_ID_PREFIX = "kohoc_"
 REFRESH_TOKEN_PREFIX = "kohor_"
@@ -178,7 +231,8 @@ def mint_access_token(
     profile fields mirror what AuthContext carries today."""
     issuer = base_url()
     now = datetime.now(tz=timezone.utc)
-    exp = now + timedelta(seconds=ACCESS_TOKEN_TTL_SECONDS)
+    ttl = access_token_ttl_seconds()
+    exp = now + timedelta(seconds=ttl)
     claims: dict[str, Any] = {
         "iss": issuer,
         "aud": issuer,
@@ -199,7 +253,7 @@ def mint_access_token(
         claims["avatar_url"] = avatar_url
     if organisation_id:
         claims["organisation_id"] = organisation_id
-    return sign_jwt(claims), ACCESS_TOKEN_TTL_SECONDS
+    return sign_jwt(claims), ttl
 
 
 # ─── Metadata documents ──────────────────────────────────────────────────────

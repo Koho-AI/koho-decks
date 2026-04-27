@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
-from authlib.jose.errors import JoseError
+from authlib.jose.errors import ExpiredTokenError, JoseError
 from fastapi import Request
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -123,6 +123,15 @@ def _is_internal_render_request(request: Request) -> bool:
     return hmac.compare_digest(presented, _INTERNAL_RENDER_TOKEN)
 
 
+def _set_auth_error(request: Request, error: str, description: str) -> None:
+    """Stash an OAuth-style auth failure on the request so the strict
+    dependency can surface it in the WWW-Authenticate header. Only set
+    when the caller actually presented credentials — anonymous requests
+    leave this unset so the strict dependency falls back to the generic
+    "Authentication required" 401 (no enumeration risk)."""
+    request.state.auth_error = (error, description)
+
+
 def _resolve_jwt_auth(request: Request) -> Optional[AuthContext]:
     """Validate an incoming `Authorization: Bearer <jwt>` header issued by
     our own OAuth 2.1 authorization server.
@@ -130,6 +139,13 @@ def _resolve_jwt_auth(request: Request) -> Optional[AuthContext]:
     Returns None (fall-through) for missing/malformed headers, bad
     signatures, wrong issuer/audience, or expired tokens. Never raises —
     downstream auth (cookie or anonymous) still has a chance.
+
+    On any *presented but rejected* JWT we also record an `auth_error`
+    on the request (RFC 6750 invalid_token / expired_token). The strict
+    auth dependency reads this to issue an actionable WWW-Authenticate
+    header so spec-compliant OAuth clients (Claude Desktop, the Cowork
+    MCP wrapper, etc.) know to refresh rather than treat the 401 as a
+    permanent failure.
 
     The JWT claim set is the source of identity — no DB lookup per
     request. Profile fields (email, name, org) are baked into the token
@@ -141,14 +157,40 @@ def _resolve_jwt_auth(request: Request) -> Optional[AuthContext]:
         return None
     token = auth_header[len(prefix):].strip()
     if not token:
+        # Bearer prefix with empty value — caller meant to present a
+        # token but didn't. Surface as invalid_token rather than fall
+        # through silently to cookie auth.
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "Bearer token missing from Authorization header.",
+        )
         return None
 
     try:
         claims = decode_jwt(token)
+    except ExpiredTokenError:
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "The access token expired. Use the refresh_token grant at "
+            "/oauth/token to obtain a new one.",
+        )
+        return None
     except JoseError:
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "The access token failed signature or claim validation. "
+            "The token may be revoked, malformed, or signed by a "
+            "different issuer; re-authorize via /oauth/authorize.",
+        )
         return None
     except Exception as exc:  # pragma: no cover - defensive
         log.warning("AuthMiddleware: JWT decode raised %s", type(exc).__name__)
+        _set_auth_error(
+            request, "invalid_token", "Could not decode the access token."
+        )
         return None
 
     # Fail-closed on missing APP_BASE_URL: we will not accept any JWT
@@ -161,21 +203,40 @@ def _resolve_jwt_auth(request: Request) -> Optional[AuthContext]:
         log.warning(
             "AuthMiddleware: rejecting JWT because APP_BASE_URL is unset"
         )
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "Server misconfiguration: APP_BASE_URL not set; rejecting all JWTs.",
+        )
         return None
     if claims.get("iss") != issuer:
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "Token issuer does not match this resource server.",
+        )
         return None
     # `aud` can be a string or a list per RFC 7519. We always mint it as
     # a string; be tolerant of either shape on the read side.
     aud = claims.get("aud")
     if aud not in (issuer, [issuer]):
+        _set_auth_error(
+            request,
+            "invalid_token",
+            "Token audience does not match this resource server.",
+        )
         return None
 
     sub = claims.get("sub")
     if not sub:
+        _set_auth_error(request, "invalid_token", "Token has no subject.")
         return None
     try:
         user_id = uuid.UUID(str(sub))
     except (TypeError, ValueError):
+        _set_auth_error(
+            request, "invalid_token", "Token subject is not a valid user id."
+        )
         return None
 
     org_raw = claims.get("organisation_id")

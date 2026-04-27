@@ -48,10 +48,8 @@ from models.sql.oauth_consent import OAuthConsentModel
 from models.sql.oauth_refresh_token import OAuthRefreshTokenModel
 from services.database import get_async_session
 from services.oauth_server import (
-    ACCESS_TOKEN_TTL_SECONDS,
     AUTH_CODE_TTL_SECONDS,
     DEFAULT_SCOPE,
-    REFRESH_TOKEN_TTL_SECONDS,
     base_url,
     exact_redirect_match,
     hash_refresh_token,
@@ -62,6 +60,7 @@ from services.oauth_server import (
     new_client_id,
     new_refresh_token,
     parse_scope,
+    refresh_token_ttl_seconds,
     verify_pkce_s256,
 )
 
@@ -508,7 +507,7 @@ async def _mint_token_response(
         user_id=user_id,
         scope=scope,
         expires_at=datetime.now(tz=timezone.utc)
-        + timedelta(seconds=REFRESH_TOKEN_TTL_SECONDS),
+        + timedelta(seconds=refresh_token_ttl_seconds()),
     )
     sql_session.add(refresh_row)
     await sql_session.commit()
