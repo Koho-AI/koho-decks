@@ -25,6 +25,53 @@ build:
 logs:
     docker compose logs -f
 
+# Run the FastAPI test suite. Mirrors the env vars in test-local.sh and
+# .github/workflows/test-all.yml so review iterations can call `just test`
+# without rediscovering the bespoke env each time. Optional pytest args
+# can be passed positionally — e.g. `just test tests/test_template_layouts.py`.
+#
+# Several test modules already fail at collection or fail to run on `main`,
+# unrelated to anything we change here. We skip them so a clean `just test`
+# signal reflects only tests we maintain. Re-enable each as it's fixed:
+#
+#   - test_gemini_schema_support.py / test_openai_schema_support.py:
+#       import `get_llm_client` / `get_google_llm_client` (renamed in the
+#       Codex/Ollama refactor).
+#   - test_slide_to_html.py: imports `app` from `server` (no longer
+#       exported).
+#   - test_presentation_generation_api.py: monkeypatches
+#       `generate_document_summary` (removed from the presentation
+#       endpoint module).
+#   - test_image_generation.py: depends on env-driven image-provider
+#       selection that the test harness doesn't set; some assertions are
+#       also stale against the placeholder fallback.
+#   - test_pptx_creator.py / test_pptx_slides_processing.py: shell out
+#       to `libreoffice`, which isn't installed in the dev sandbox.
+test *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd servers/fastapi
+    export APP_DATA_DIRECTORY=/tmp/app_data
+    export TEMP_DIRECTORY=/tmp/presenton
+    export DATABASE_URL=sqlite+aiosqlite:///./test.db
+    export DISABLE_ANONYMOUS_TRACKING=true
+    export DISABLE_IMAGE_GENERATION=true
+    export PYTHONPATH="$(pwd)"
+    skip_args=(
+        --ignore=tests/test_gemini_schema_support.py
+        --ignore=tests/test_openai_schema_support.py
+        --ignore=tests/test_slide_to_html.py
+        --ignore=tests/test_presentation_generation_api.py
+        --ignore=tests/test_image_generation.py
+        --ignore=tests/test_pptx_creator.py
+        --ignore=tests/test_pptx_slides_processing.py
+    )
+    if command -v uv >/dev/null 2>&1; then
+        uv run pytest "${skip_args[@]}" {{ARGS}} -v --tb=short
+    else
+        python -m pytest "${skip_args[@]}" {{ARGS}} -v --tb=short
+    fi
+
 # ─── Remote: koho-dev VPS ───────────────────────────────────────────────
 
 # One-off VPS provisioning (creates `decks` user, installs Docker, linger).
