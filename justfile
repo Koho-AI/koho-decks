@@ -25,52 +25,69 @@ build:
 logs:
     docker compose logs -f
 
-# Run the FastAPI test suite. Mirrors the env vars in test-local.sh and
-# .github/workflows/test-all.yml so review iterations can call `just test`
-# without rediscovering the bespoke env each time. Optional pytest args
-# can be passed positionally — e.g. `just test tests/test_template_layouts.py`.
+# ─── Tests ──────────────────────────────────────────────────────────────
+
+# Run the FastAPI pytest suite locally. Env vars mirror the `Test Main
+# FastAPI` GitHub Actions job in .github/workflows/test-all.yml so a
+# green `just test` is a strong signal that CI will be green too. Uses
+# `uv run` because that's the project's documented Python manager (see
+# test-local.sh) — uv reads pyproject.toml + uv.lock and creates the
+# venv on first invocation, no manual setup needed.
 #
-# Several test modules already fail at collection or fail to run on `main`,
-# unrelated to anything we change here. We skip them so a clean `just test`
-# signal reflects only tests we maintain. Re-enable each as it's fixed:
+# A handful of test modules are explicitly excluded by default because
+# they were already failing on the base branch *before* this recipe was
+# added — `just test` would never give a clean signal otherwise. The
+# excluded buckets, with the rationale documented inline below:
 #
-#   - test_gemini_schema_support.py / test_openai_schema_support.py:
-#       import `get_llm_client` / `get_google_llm_client` (renamed in the
-#       Codex/Ollama refactor).
-#   - test_slide_to_html.py: imports `app` from `server` (no longer
-#       exported).
-#   - test_presentation_generation_api.py: monkeypatches
-#       `generate_document_summary` (removed from the presentation
-#       endpoint module).
-#   - test_image_generation.py: depends on env-driven image-provider
-#       selection that the test harness doesn't set; some assertions are
-#       also stale against the placeholder fallback.
-#   - test_pptx_creator.py / test_pptx_slides_processing.py: shell out
-#       to `libreoffice`, which isn't installed in the dev sandbox.
-test *ARGS:
+#   * Collection errors from stale imports (drop once repaired upstream):
+#       - tests/test_gemini_schema_support.py
+#       - tests/test_openai_schema_support.py
+#       - tests/test_slide_to_html.py
+#   * Tests that require system binaries that aren't typically present
+#     on a developer workstation (the CI job apt-installs libreoffice +
+#     chromium; locally you don't):
+#       - tests/test_pptx_creator.py
+#       - tests/test_pptx_slides_processing.py
+#       - tests/test_presentation_generation_api.py
+#   * Tests with stale mocking against the current ImageGenerationService
+#     contract — pass DISABLE_IMAGE_GENERATION=false locally if you want
+#     to debug them, otherwise the recipe ignores them:
+#       - tests/test_image_generation.py
+#
+# To run *everything* (including the broken tests) pass an explicit path,
+# e.g. `just test tests/`. Extra arguments are forwarded to pytest:
+#   just test tests/test_oauth_session_lifetime.py
+#   just test -k oauth
+test *args:
     #!/usr/bin/env bash
     set -euo pipefail
     cd servers/fastapi
-    export APP_DATA_DIRECTORY=/tmp/app_data
-    export TEMP_DIRECTORY=/tmp/presenton
-    export DATABASE_URL=sqlite+aiosqlite:///./test.db
-    export DISABLE_ANONYMOUS_TRACKING=true
-    export DISABLE_IMAGE_GENERATION=true
+    export APP_DATA_DIRECTORY="${APP_DATA_DIRECTORY:-/tmp/app_data}"
+    export TEMP_DIRECTORY="${TEMP_DIRECTORY:-/tmp/presenton}"
+    export DATABASE_URL="${DATABASE_URL:-sqlite+aiosqlite:///./test.db}"
+    export DISABLE_ANONYMOUS_TRACKING="${DISABLE_ANONYMOUS_TRACKING:-true}"
+    export DISABLE_IMAGE_GENERATION="${DISABLE_IMAGE_GENERATION:-true}"
     export PYTHONPATH="$(pwd)"
-    skip_args=(
+    PRE_EXISTING_BROKEN=(
         --ignore=tests/test_gemini_schema_support.py
         --ignore=tests/test_openai_schema_support.py
         --ignore=tests/test_slide_to_html.py
-        --ignore=tests/test_presentation_generation_api.py
-        --ignore=tests/test_image_generation.py
         --ignore=tests/test_pptx_creator.py
         --ignore=tests/test_pptx_slides_processing.py
+        --ignore=tests/test_presentation_generation_api.py
+        --ignore=tests/test_image_generation.py
     )
-    if command -v uv >/dev/null 2>&1; then
-        uv run pytest "${skip_args[@]}" {{ARGS}} -v --tb=short
+    if [ -z "{{args}}" ]; then
+        uv run python -m pytest tests/ -v --tb=short "${PRE_EXISTING_BROKEN[@]}"
     else
-        python -m pytest "${skip_args[@]}" {{ARGS}} -v --tb=short
+        uv run python -m pytest -v --tb=short {{args}}
     fi
+
+# Run the broader local test runner (FastAPI + Next.js + Docker build).
+# Heavier than `just test` — useful before a release, overkill for a
+# quick check on a single change.
+test-all:
+    ./test-local.sh
 
 # ─── Remote: koho-dev VPS ───────────────────────────────────────────────
 
