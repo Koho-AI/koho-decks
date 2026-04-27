@@ -64,19 +64,26 @@ def resolve_layout_id_to_index(
     Accepts either the bare id (e.g. `koho-statement`) or the qualified
     form `{template}:{layout_id}` (e.g. `koho-pitch:koho-statement`). The
     qualified form is what `list_template_layouts` returns; the bare form
-    is what's stored on slide rows in the DB. Both are valid input from
-    the agent.
+    is what's stored on slide rows for built-in templates. Both are
+    valid input from the agent.
+
+    Custom templates store `slide_layout.id` already-qualified
+    (`custom-<uuid>:<layout-id>`); we match on the bare-id portion of
+    both sides so an agent passing `koho-statement` resolves correctly
+    against either a built-in or a custom template.
 
     Returns None when the id can't be matched — the caller decides
     whether that's a hard error or a fall-through to the auto-picker.
     """
     if not layout_id:
         return None
-    bare_id = layout_id.split(":", 1)[1] if ":" in layout_id else layout_id
+    bare_input = layout_id.split(":", 1)[1] if ":" in layout_id else layout_id
     for index, slide_layout in enumerate(layout.slides):
-        if slide_layout.id == bare_id:
+        slide_id = slide_layout.id or ""
+        slide_bare = slide_id.split(":", 1)[1] if ":" in slide_id else slide_id
+        if slide_id == layout_id:
             return index
-        if slide_layout.id == layout_id:
+        if slide_bare == bare_input:
             return index
     return None
 

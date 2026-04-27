@@ -23,12 +23,15 @@ class SlideInputModel(BaseModel):
     layout: Optional[str] = Field(
         default=None,
         description=(
-            "Optional layout id to force for this slide (e.g. "
-            "`koho-pitch:koho-statement` or just `koho-statement`). When set, "
-            "the picker MUST honour it — no LLM override. Call "
-            "`list_template_layouts(template)` to discover valid ids. When "
-            "omitted, the slide falls back to the auto-picker (which now "
-            "biases toward layout variety across the deck)."
+            "Optional layout id to force for this slide. Either form is "
+            "accepted: the fully-qualified id returned by "
+            "`list_template_layouts` (e.g. `koho-pitch:koho-statement` or "
+            "`custom-<uuid>:my-layout`), or the bare id (e.g. "
+            "`koho-statement`). When set, the picker MUST honour it — no "
+            "LLM override, and the override wins over ordered templates "
+            "too. Call `list_template_layouts(template)` to discover valid "
+            "ids. When omitted, the slide falls back to the auto-picker "
+            "(which now biases toward layout variety across the deck)."
         ),
     )
     speaker_note: Optional[str] = Field(

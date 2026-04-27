@@ -710,15 +710,20 @@ async def generate_presentation_handler(
             explicit_layout_indices = [None] * total_outlines
 
         # Generate Structure
-        if layout_model.ordered:
-            presentation_structure = layout_model.to_presentation_structure()
-        elif all(idx is not None for idx in explicit_layout_indices):
-            # Every slide has an explicit layout — skip the LLM entirely.
-            # This is the path taken by agents that did the work of
-            # picking layouts up front via list_template_layouts.
+        all_explicit = bool(explicit_layout_indices) and all(
+            idx is not None for idx in explicit_layout_indices
+        )
+        any_explicit = any(idx is not None for idx in explicit_layout_indices)
+        if all_explicit:
+            # Every slide has an explicit layout — skip both the LLM
+            # picker and the ordered-structure path entirely. The
+            # contract is "when `layout` is provided on a slide, the
+            # picker MUST honour it"; that supersedes ordered templates.
             presentation_structure = PresentationStructureModel(
                 slides=[idx for idx in explicit_layout_indices],  # type: ignore[misc]
             )
+        elif layout_model.ordered:
+            presentation_structure = layout_model.to_presentation_structure()
         else:
             presentation_structure: PresentationStructureModel = (
                 await generate_presentation_structure(
@@ -739,15 +744,25 @@ async def generate_presentation_handler(
                 presentation_structure.slides[index] = random_slide_index
 
         # Honour explicit per-slide layout overrides — these always win,
-        # regardless of what the LLM picker proposed. Then apply the
-        # variety bias to the remaining auto-picked slots so we don't
-        # end up with bullet-list six times in a row.
+        # regardless of what the LLM picker or the ordered structure
+        # proposed. Then apply the variety bias to the remaining
+        # auto-picked slots so we don't end up with bullet-list six
+        # times in a row.
         if not layout_model.ordered:
             presentation_structure.slides = apply_variety_bias(
                 presentation_structure.slides,
                 explicit_layout_indices,
                 total_slide_layouts,
             )
+        elif any_explicit:
+            # Ordered template + partial explicit overrides: the ordered
+            # structure provided the base sequence, but pinned positions
+            # MUST still be honoured. Variety bias is intentionally not
+            # applied — the ordered structure is sacred for the
+            # un-pinned positions.
+            for i, idx in enumerate(explicit_layout_indices):
+                if idx is not None and i < len(presentation_structure.slides):
+                    presentation_structure.slides[i] = idx
 
         # Injecting table of contents to the presentation structure and outlines
         if request.include_table_of_contents and not using_slides_markdown:

@@ -19,7 +19,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 from api.deps import get_current_user_strict
 from constants.presentation import DEFAULT_TEMPLATES

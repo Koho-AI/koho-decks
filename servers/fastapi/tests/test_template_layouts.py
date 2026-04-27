@@ -532,6 +532,39 @@ def test_resolve_layout_id_accepts_bare_and_qualified_ids():
     assert resolve_layout_id_to_index(layout, "made-up-layout") is None
 
 
+def test_resolve_layout_id_accepts_bare_id_for_custom_templates():
+    """Custom templates store `slide.id` already-qualified
+    (`custom-<uuid>:<layout-id>`). An agent passing the bare layout id
+    must still resolve correctly — the field description says either
+    form works, and we shouldn't make the agent reverse-engineer
+    custom-template prefixes."""
+    custom_layout = PresentationLayoutModel(
+        name="custom-deadbeef-1234",
+        ordered=False,
+        slides=[
+            SlideLayoutModel(
+                id="custom-deadbeef-1234:hero",
+                name="Hero",
+                description="Hero slide",
+                json_schema={"type": "object", "properties": {"title": {"type": "string"}}},
+            ),
+            SlideLayoutModel(
+                id="custom-deadbeef-1234:bullets",
+                name="Bullets",
+                description="Bullet slide",
+                json_schema={"type": "object", "properties": {"items": {"type": "array"}}},
+            ),
+        ],
+    )
+    # Bare id resolves
+    assert resolve_layout_id_to_index(custom_layout, "hero") == 0
+    assert resolve_layout_id_to_index(custom_layout, "bullets") == 1
+    # Fully qualified id also resolves
+    assert resolve_layout_id_to_index(custom_layout, "custom-deadbeef-1234:hero") == 0
+    # Unknown id is still None
+    assert resolve_layout_id_to_index(custom_layout, "nope") is None
+
+
 # ─── AC #2: explicit per-slide layouts honoured exactly ───────────────────
 
 
@@ -779,6 +812,16 @@ def test_generate_handler_emits_slides_with_pinned_layouts(monkeypatch):
     )
     monkeypatch.setattr(presentation_module, "export_presentation", _fake_export)
     # No-op the image generation + concurrent webhook side-effects.
+    # Note: `get_images_directory()` is evaluated *before* the
+    # `ImageGenerationService(...)` constructor runs, so we have to
+    # patch the directory lookup too — otherwise it dereferences the
+    # APP_DATA_DIRECTORY env var (which the test deliberately doesn't
+    # set) and crashes inside `os.path.join`.
+    monkeypatch.setattr(
+        presentation_module,
+        "get_images_directory",
+        lambda: "/tmp/koho-test-images",
+    )
     monkeypatch.setattr(
         presentation_module,
         "ImageGenerationService",
@@ -941,6 +984,13 @@ def test_generate_handler_slides_markdown_still_works(monkeypatch):
         "generate_presentation_structure",
         _fake_generate_structure,
     )
+    # See the AC-2 test for why `get_images_directory` is patched —
+    # the constructor's argument is eager-evaluated.
+    monkeypatch.setattr(
+        presentation_module,
+        "get_images_directory",
+        lambda: "/tmp/koho-test-images",
+    )
     monkeypatch.setattr(
         presentation_module,
         "ImageGenerationService",
@@ -980,3 +1030,121 @@ def test_generate_handler_slides_markdown_still_works(monkeypatch):
         f"deprecated slides_markdown path collapsed to {distinct} distinct "
         f"layouts despite variety bias: {final_layout_ids}"
     )
+
+
+def test_generate_handler_honours_explicit_layouts_on_ordered_template(monkeypatch):
+    """Contract: when `layout` is provided on a slide, the picker MUST
+    honour it — even on ordered templates where the structure normally
+    derives from the template's slide order, not the agent's choice.
+
+    Regression guard for the prior shape where `layout_model.ordered`
+    would short-circuit and silently discard per-slide overrides."""
+    import uuid
+
+    from api.v1.ppt.endpoints import presentation as presentation_module
+    from models.generate_presentation_request import (
+        GeneratePresentationRequest,
+        SlideInputModel,
+    )
+    from models.presentation_and_path import PresentationAndPath
+
+    # Same palette, but ordered=True — emulates a template that wants
+    # to dictate slide order.
+    ordered_layout = PresentationLayoutModel(
+        name="koho-pitch",
+        ordered=True,
+        slides=[SlideLayoutModel(**entry) for entry in KOHO_PITCH_LAYOUT_FIXTURE],
+    )
+
+    captured_slides: List[Any] = []
+
+    class _FakeSession:
+        def add(self, obj):
+            from models.sql.slide import SlideModel as _SlideModel
+
+            if isinstance(obj, _SlideModel):
+                captured_slides.append(obj)
+
+        def add_all(self, objs):
+            from models.sql.slide import SlideModel as _SlideModel
+
+            for obj in objs:
+                if isinstance(obj, _SlideModel):
+                    captured_slides.append(obj)
+
+        async def commit(self):
+            return None
+
+    async def _fake_get_layout_by_name(_name: str):
+        return ordered_layout
+
+    async def _fake_get_slide_content(slide_layout, outline, *args, **kwargs):
+        return {"title": outline.content[:40], "__speaker_note__": "ok"}
+
+    async def _fake_process_assets(_image_service, _slide):
+        return []
+
+    async def _fake_export(pid, _title, _format):
+        return PresentationAndPath(
+            presentation_id=pid,
+            path="/tmp/exports/fake.pptx",
+        )
+
+    monkeypatch.setattr(presentation_module, "get_layout_by_name", _fake_get_layout_by_name)
+    monkeypatch.setattr(
+        presentation_module,
+        "get_slide_content_from_type_and_outline",
+        _fake_get_slide_content,
+    )
+    monkeypatch.setattr(
+        presentation_module,
+        "process_slide_and_fetch_assets",
+        _fake_process_assets,
+    )
+    monkeypatch.setattr(presentation_module, "export_presentation", _fake_export)
+    monkeypatch.setattr(
+        presentation_module,
+        "get_images_directory",
+        lambda: "/tmp/koho-test-images",
+    )
+    monkeypatch.setattr(
+        presentation_module,
+        "ImageGenerationService",
+        lambda _dir: object(),
+    )
+    monkeypatch.setattr(
+        presentation_module.CONCURRENT_SERVICE,
+        "run_task",
+        lambda *args, **kwargs: None,
+    )
+
+    requested_layout_ids = [
+        "koho-statement",
+        "koho-cta",
+        "koho-two-column",
+    ]
+    request = GeneratePresentationRequest(
+        content="x",
+        template="koho-pitch",
+        n_slides=len(requested_layout_ids),
+        slides=[
+            SlideInputModel(markdown=f"# Slide {i}", layout=lid)
+            for i, lid in enumerate(requested_layout_ids)
+        ],
+    )
+    import asyncio
+
+    response = asyncio.run(
+        presentation_module.generate_presentation_handler(
+            request,
+            uuid.uuid4(),
+            None,
+            _FakeSession(),  # type: ignore[arg-type]
+        )
+    )
+    assert response is not None
+
+    # The agent's pinned layouts must win over the ordered structure.
+    assert len(captured_slides) == len(requested_layout_ids)
+    captured_ids = [s.layout for s in sorted(captured_slides, key=lambda s: s.index)]
+    assert captured_ids == requested_layout_ids
