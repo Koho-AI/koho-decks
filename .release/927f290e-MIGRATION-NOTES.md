@@ -8,20 +8,23 @@ None. No new tables, altered columns, or indexes are introduced by this change.
 
 Two optional environment variables are introduced. Neither is required — the application falls back to the new defaults when they are absent.
 
-| Variable | Required | Default |
-|---|---|---|
-| `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | No | `86400` |
-| `OAUTH_REFRESH_TOKEN_TTL_SECONDS` | No | `7776000` |
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `OAUTH_ACCESS_TOKEN_TTL_SECONDS` | No | `86400` (24 h) | Accepts any positive integer; non-numeric or non-positive values log a warning and use the default. |
+| `OAUTH_REFRESH_TOKEN_TTL_SECONDS` | No | `7776000` (90 d) | Accepts any positive integer; same fallback behavior. |
 
-**Standard Docker Compose deployments:** the variables are already wired in `docker-compose.yml`. To override them, add them to your `.env` file before restarting the container.
+**Standard Docker Compose deployments:** both variables are already wired in `docker-compose.yml` and will pass through from the host environment. No `.env` changes are required to get the new defaults. To pin a custom value, add the variable to your `.env` file and restart the stack (`docker compose up -d`).
 
-**Production VPS (decks.koho.ai):** the `deploy/env.template` does not yet include these variables, so the defaults take effect automatically on the next deploy. To pin a custom value, add the line manually to `/home/decks/app/.env` on the VPS and restart the service (`just service-restart`).
+**Production VPS (decks.koho.ai):** `deploy/env.template` does not yet include these variables; the defaults apply automatically on the next deploy. To override, add the line manually to `/home/decks/app/.env` on the VPS before restarting (`just service-restart`).
 
 ### API endpoint changes
 
-No endpoints are added, removed, or renamed. The behavior change is limited to response headers:
+No endpoints are added, removed, or renamed. The behavior change is limited to response headers on existing endpoints:
 
-- `401` responses from any auth-gated endpoint now include a `WWW-Authenticate: Bearer realm="koho-decks"` header. When a Bearer token was presented and rejected, the header additionally contains `error="invalid_token"` and `error_description`. Client code that checks `response.headers["WWW-Authenticate"]` should handle this new header without issues; code that fails on unexpected headers should be reviewed.
+- All `401 Unauthorized` responses from auth-gated endpoints now include a `WWW-Authenticate: Bearer realm="koho-decks"` header.
+- When a Bearer token was presented and rejected, the header additionally carries `error="invalid_token"` and `error_description`. The description for an expired token instructs the client to use the `refresh_token` grant at `/oauth/token`; the description for a signature or claim failure instructs the client to re-authorize via `/oauth/authorize`.
+
+Client code that checks `response.headers["WWW-Authenticate"]` should handle this new header without issues. Client code that fails on unexpected response headers should be reviewed before upgrading.
 
 ### Dependency changes
 
@@ -29,7 +32,7 @@ None. No package versions changed.
 
 ### Required environment variable changes
 
-None required. The deployment functions identically without any `.env` changes.
+None. The deployment is fully functional without any `.env` changes.
 
 ### Migration steps
 
