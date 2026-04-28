@@ -123,9 +123,19 @@ caddy-install-remote:
         rm /tmp/decks.caddy
     '
 
-# Trigger a production deploy via GitHub Actions.
+# Trigger a production deploy (no-op if `gh` is unavailable — pushes auto-deploy).
 deploy:
-    gh workflow run deploy.yml
+    #!/usr/bin/env bash
+    set -e
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "gh not installed — deploys auto-trigger on push to main; nothing to do."
+        exit 0
+    fi
+    if gh workflow run deploy.yml; then
+        echo "Workflow dispatched."
+    else
+        echo "Workflow dispatch failed (likely missing actions:write scope); deploys auto-trigger on push to main, so this is non-fatal."
+    fi
 
 # Service status on the VPS (SSHes as decks).
 service-status:
