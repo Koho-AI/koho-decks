@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # deploy.sh — Deploy helper for Koho Decks, invoked over SSH by GitHub Actions.
 #
-# Runs as the `decks` user. Expects the repo to already be rsync'd into
-# $HOME/app/ and a rendered .env at $HOME/app/.env.
+# Runs as the `decks` user on the Mac Studio. Expects the repo to already
+# be rsync'd into $HOME/app/ and a rendered .env at $HOME/app/.env.
 #
 # Before build, the existing `koho-decks:latest` image is retagged as
 # `koho-decks:previous`. On health-check failure, `koho-decks:previous`
@@ -10,10 +10,11 @@
 # compose override pins the image tag so docker compose picks up whichever
 # image currently wears the `:latest` tag.
 #
-# The systemd unit runs `docker compose up -d --build` — build happens as
-# part of the service start, not as a separate step here. Avoids the
-# classic/BuildKit image-store split where a standalone `compose build`
-# wouldn't make the image visible to the subsequent `compose up`.
+# We invoke `docker compose up -d --build` directly — there's no launchd
+# unit fronting the stack on the Mac. Containers carry `restart:
+# unless-stopped` so they survive crashes; OrbStack itself only auto-starts
+# when the decks user has an active session, so reboot recovery still
+# requires the operator to log decks back in (see deploy/bootstrap.sh).
 #
 # Concurrency is enforced by the GHA workflow's concurrency group.
 
@@ -21,7 +22,6 @@ set -euo pipefail
 
 DEPLOY_DIR="${HOME}/app"
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
-SERVICE="decks"
 
 HEALTH_URL="http://localhost:8094/api/v1/health"
 HEALTH_RETRIES=20
@@ -62,20 +62,12 @@ run_health_checks() {
     return 1
 }
 
-# Reclaim disk around every deploy. The VPS is shared with sibling
-# services (koban) on the same docker daemon, but `docker image prune`
-# without -a only touches dangling (untagged) images — tagged images like
-# koban:latest and koho-decks:previous are untouched. `until=168h` further
-# restricts the prune to layers older than 7 days, preserving anything we
-# might want to hand-retag for an emergency rollback. Never fatal.
-#
-# We call this BOTH before and after a deploy:
-# - Before: covers the case where a prior deploy failed mid-build and
-#   left garbage behind. The post-deploy prune never ran then, so disk
-#   usage accumulates silently until a future deploy runs out of space
-#   (which is exactly how today's incident happened).
-# - After: reclaims this deploy's own dangling layers once the new
-#   container is up and healthy.
+# Reclaim disk around every deploy. The Mac Studio is shared with sibling
+# services (koban) on the same host, but `docker image prune` without -a
+# only touches dangling (untagged) images — tagged images like
+# koho-decks:previous are untouched. `until=168h` further restricts the
+# prune to layers older than 7 days, preserving anything we might want to
+# hand-retag for an emergency rollback. Never fatal.
 prune_stale() {
     echo "Pruning docker images + build cache older than 7 days..."
     docker image prune -f --filter "until=168h" || true
@@ -86,8 +78,8 @@ case "$mode" in
     deploy)
         prune_stale
         tag_previous
-        echo "Restarting via systemd (build + bring up postgres + production)..."
-        systemctl --user restart "$SERVICE"
+        echo "Bringing up postgres + production via compose (build inline)..."
+        $COMPOSE up -d --build --remove-orphans production
         if run_health_checks; then
             echo "Deploy successful"
             prune_stale
@@ -96,7 +88,7 @@ case "$mode" in
         echo "Health check failed, rolling back..." >&2
         if docker image inspect "$IMAGE_PREVIOUS" > /dev/null 2>&1; then
             docker tag "$IMAGE_PREVIOUS" "$IMAGE_LATEST"
-            systemctl --user restart "$SERVICE"
+            $COMPOSE up -d production
             echo "Rollback complete"
         else
             echo "No $IMAGE_PREVIOUS to roll back to — service may be degraded" >&2
@@ -111,7 +103,7 @@ case "$mode" in
         fi
         prune_stale
         docker tag "$IMAGE_PREVIOUS" "$IMAGE_LATEST"
-        systemctl --user restart "$SERVICE"
+        $COMPOSE up -d production
         if run_health_checks; then
             echo "Rollback successful"
             prune_stale

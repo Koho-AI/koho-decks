@@ -1,13 +1,16 @@
 # Koho Decks — Caddy vhost.
 #
-# Deployed to /etc/caddy/conf.d/decks.caddy on koho-dev. The top-level
-# /etc/caddy/Caddyfile `import`s every file in conf.d/, so this one
-# lives independently — koban's bootstrap won't touch it, and vice
-# versa.
+# Deployed to /opt/homebrew/etc/conf.d/decks.caddy on the Mac Studio.
+# The top-level /opt/homebrew/etc/Caddyfile `import`s every file in
+# conf.d/, so this one lives independently — koban's host-setup won't
+# touch it, and vice versa.
 #
-# Apply with: just caddy-install-remote
+# Public TLS is terminated upstream by Cloudflare Tunnel; Caddy sits
+# behind cloudflared on loopback, listening plain HTTP on :8080. Site
+# block uses `http://decks.koho.tools:8080` (not bare `decks.koho.tools`)
+# to match the loopback-only mode set by Caddyfile's `auto_https off`.
 
-decks.koho.ai {
+http://decks.koho.tools:8080 {
 	encode gzip
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 

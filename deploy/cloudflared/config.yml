@@ -1,0 +1,38 @@
+# cloudflared tunnel config for the second tunnel on the Mac Studio —
+# the one in the **koho.tools** Cloudflare account (separate account from
+# koban.dev's `koho-studio` tunnel).
+#
+# Setup (one-time, on a workstation logged into the koho.tools CF account):
+#   cloudflared tunnel login            # writes ~/.cloudflared/cert.pem
+#                                         (overwrites the koban.dev cert —
+#                                         back up first if you need both)
+#   cloudflared tunnel create decks-studio
+#   # → outputs <tunnel-id> and writes ~/.cloudflared/<tunnel-id>.json
+#
+# DNS (CLI, no Zero Trust required):
+#   cloudflared tunnel route dns decks-studio decks.koho.tools
+#
+# Install on Studio (driven by deploy/bootstrap.sh):
+#   - this config.yml lands at /Library/Application Support/com.cloudflare.cloudflared-tools/config.yml
+#     (REPLACE_WITH_TUNNEL_ID substituted to the real ID)
+#   - the credentials JSON at the matching path, root:wheel 0600
+#   - LaunchDaemon at /Library/LaunchDaemons/com.cloudflare.cloudflared-tools.plist
+#
+# Two cloudflared services run side by side on the Mac:
+#   com.cloudflare.cloudflared        (koban.dev account, koho-studio tunnel)
+#   com.cloudflare.cloudflared-tools  (koho.tools account, decks-studio tunnel)
+
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: /Library/Application Support/com.cloudflare.cloudflared-tools/REPLACE_WITH_TUNNEL_ID.json
+
+# Loopback request from cloudflared → Caddy is HTTP/1.1 plaintext on :8080.
+# Caddy fans out by Host header — the same shared :8080 listener that
+# koban.dev requests already arrive on, just from a different tunnel.
+ingress:
+  - hostname: decks.koho.tools
+    service: http://localhost:8080
+  - service: http_status:404
+
+originRequest:
+  connectTimeout: 10s
+  noTLSVerify: false

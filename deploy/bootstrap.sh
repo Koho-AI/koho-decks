@@ -1,109 +1,129 @@
 #!/usr/bin/env bash
-# bootstrap.sh — One-off VPS provisioning for Koho Decks.
+# bootstrap.sh — One-off Mac Studio provisioning for Koho Decks.
 #
-# Run as an admin user with sudo (e.g. `alex@koho-dev`):
-#   scp deploy/bootstrap.sh alex@koho-dev:/tmp/
-#   ssh alex@koho-dev 'sudo bash /tmp/bootstrap.sh'
+# Run from a clone of the koho-decks repo on the Studio, signed in as an
+# admin user (i.e. `alex`, not `decks`):
 #
-# Idempotent — safe to re-run. Creates the `decks` system user, installs
-# Docker Engine + compose plugin if missing, adds `decks` to the docker
-# group, enables user-service lingering, and seeds the app directory.
+#   git clone https://github.com/Koho-AI/koho-decks /tmp/koho-decks
+#   cd /tmp/koho-decks
+#   KOHO_TOOLS_TUNNEL_ID=<uuid> deploy/bootstrap.sh
 #
-# Afterwards, still run manually (separate from bootstrap):
-#   - Append deploy/Caddyfile.snippet to /etc/caddy/Caddyfile and
-#     `sudo systemctl reload caddy`.
-#   - Populate /home/decks/.ssh/authorized_keys with the GHA deploy key.
-#   - Install deploy/decks.service via:
-#         sudo -iu decks -- bash -c '
-#           mkdir -p ~/.config/systemd/user
-#           cp ~/app/deploy/decks.service ~/.config/systemd/user/
-#           systemctl --user daemon-reload
-#           systemctl --user enable decks
-#         '
+# Re-run safely after editing any host-side artefact in deploy/ — every
+# install is conditional on a content diff.
+#
+# Pre-reqs handled OUT-OF-BAND (not by this script):
+#   - `decks` user created (done by koban's deploy/bootstrap-users.sh).
+#   - OrbStack installed (in koban's deploy/Brewfile).
+#   - Caddy + cloudflared (#1, koban-side) installed and running by koban's
+#     deploy/host-setup.sh. This script just adds decks-side fragments.
+#   - Cloudflare Tunnel `decks-studio` created from a CF-authenticated
+#     workstation in the **koho.tools** account; credentials JSON copied to:
+#       /Library/Application Support/com.cloudflare.cloudflared-tools/<id>.json
+#     (root:wheel 0600). KOHO_TOOLS_TUNNEL_ID exported in this shell.
 
 set -euo pipefail
 
-USER_NAME="decks"
-USER_HOME="/home/${USER_NAME}"
-
-if [ "$(id -u)" -ne 0 ]; then
-    echo "bootstrap.sh must be run as root (use sudo)" >&2
+if [[ "${EUID}" -eq 0 ]]; then
+    echo "Run as a regular admin user; the script invokes sudo where needed." >&2
     exit 1
 fi
 
-# ── Create the decks user ──────────────────────────────────────────────
-if ! id -u "$USER_NAME" > /dev/null 2>&1; then
-    echo "Creating user '$USER_NAME'..."
-    useradd --create-home --shell /bin/bash "$USER_NAME"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+DECKS_USER="decks"
+BREW_PREFIX="/opt/homebrew"
+CADDY_ETC="${BREW_PREFIX}/etc"
+CLOUDFLARED_TOOLS_DIR="/Library/Application Support/com.cloudflare.cloudflared-tools"
+
+# --- Preflight: decks user must exist ---------------------------------------
+if ! id "$DECKS_USER" >/dev/null 2>&1; then
+    echo "Error: user '$DECKS_USER' does not exist on this host." >&2
+    echo "Run koban's deploy/bootstrap-users.sh first." >&2
+    exit 1
+fi
+
+# --- Preflight: OrbStack must be installed ----------------------------------
+if [[ ! -d /Applications/OrbStack.app ]]; then
+    echo "Error: OrbStack not installed. Run koban's deploy/host-setup.sh first" >&2
+    echo "(deploy/Brewfile includes the orbstack cask)." >&2
+    exit 1
+fi
+
+# --- Preflight: Caddy must be installed (shared with koban) -----------------
+if ! command -v "${BREW_PREFIX}/bin/caddy" >/dev/null 2>&1; then
+    echo "Error: caddy not installed. Run koban's deploy/host-setup.sh first." >&2
+    exit 1
+fi
+
+# --- Step 1: Caddy decks vhost fragment -------------------------------------
+echo ">>> ${CADDY_ETC}/conf.d/decks.caddy"
+DECKS_CADDY_SRC="deploy/conf.d/decks.caddy"
+DECKS_CADDY_DST="${CADDY_ETC}/conf.d/decks.caddy"
+if [[ ! -f "$DECKS_CADDY_DST" ]] || ! sudo cmp -s "$DECKS_CADDY_SRC" "$DECKS_CADDY_DST"; then
+    sudo install -d -m 0755 "${CADDY_ETC}/conf.d"
+    sudo install -m 0644 "$DECKS_CADDY_SRC" "$DECKS_CADDY_DST"
+    # Validate the merged config before asking Caddy to use it. The validate
+    # subcommand parses /opt/homebrew/etc/Caddyfile + every conf.d/*.caddy
+    # import; if decks.caddy is malformed the whole site goes down on reload,
+    # so fail fast here rather than at runtime.
+    "${BREW_PREFIX}/bin/caddy" validate --config "${CADDY_ETC}/Caddyfile"
+    sudo "${BREW_PREFIX}/bin/brew" services restart caddy >/dev/null
+    echo "  installed (changed) — caddy restarted"
 else
-    echo "User '$USER_NAME' already exists — skipping create"
+    echo "  unchanged"
 fi
 
-# ── Ensure rsync is present (required by GHA's `Sync repo to VPS` step) ─
-if ! command -v rsync > /dev/null 2>&1; then
-    apt-get install -y rsync
-fi
-
-# ── Install Docker if missing ──────────────────────────────────────────
-if ! command -v docker > /dev/null 2>&1; then
-    echo "Installing Docker Engine + compose plugin..."
-    apt-get update
-    apt-get install -y ca-certificates curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg \
-        -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-    . /etc/os-release
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
-https://download.docker.com/linux/debian ${VERSION_CODENAME} stable" \
-        > /etc/apt/sources.list.d/docker.list
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io \
-        docker-buildx-plugin docker-compose-plugin
-    systemctl enable --now docker
+# --- Step 2: cloudflared-tools (second tunnel for koho.tools) ---------------
+echo ">>> cloudflared-tools tunnel config (koho.tools account)"
+if [[ -z "${KOHO_TOOLS_TUNNEL_ID:-}" ]]; then
+    echo "  KOHO_TOOLS_TUNNEL_ID not set — skipping cloudflared-tools install."
+    echo "  Create the tunnel from a CF-authenticated workstation:"
+    echo "    cloudflared tunnel login   # pick a koho.tools zone"
+    echo "    cloudflared tunnel create decks-studio"
+    echo "  then copy the credentials JSON to ${CLOUDFLARED_TOOLS_DIR}/<id>.json (root:wheel 0600)"
+    echo "  and re-run with KOHO_TOOLS_TUNNEL_ID=<id>."
 else
-    echo "Docker already installed — skipping"
-fi
+    sudo install -d -m 0755 "$CLOUDFLARED_TOOLS_DIR"
+    CRED_FILE="${CLOUDFLARED_TOOLS_DIR}/${KOHO_TOOLS_TUNNEL_ID}.json"
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "  Error: $CRED_FILE missing. Copy it from the workstation that ran" >&2
+        echo "  'cloudflared tunnel create decks-studio' against the koho.tools account." >&2
+        exit 1
+    fi
+    # Substitute the tunnel-id placeholder into the config.
+    TMP_CONFIG="$(mktemp)"
+    trap 'rm -f "$TMP_CONFIG"' EXIT
+    sed "s|REPLACE_WITH_TUNNEL_ID|${KOHO_TOOLS_TUNNEL_ID}|g" deploy/cloudflared/config.yml > "$TMP_CONFIG"
+    sudo install -m 0644 -o root -g wheel "$TMP_CONFIG" "${CLOUDFLARED_TOOLS_DIR}/config.yml"
 
-# ── Ensure compose plugin is present ───────────────────────────────────
-if ! docker compose version > /dev/null 2>&1; then
-    echo "Installing docker-compose-plugin..."
-    apt-get install -y docker-compose-plugin
-fi
-
-# ── Add decks to docker group ──────────────────────────────────────────
-if ! id -nG "$USER_NAME" | tr ' ' '\n' | grep -qx docker; then
-    usermod -aG docker "$USER_NAME"
-    echo "Added '$USER_NAME' to docker group (will take effect on next login)"
-else
-    echo "'$USER_NAME' already in docker group"
-fi
-
-# ── Enable lingering so user systemd keeps running after logout ───────
-loginctl enable-linger "$USER_NAME" || true
-echo "Lingering enabled for '$USER_NAME'"
-
-# ── Seed app + data directories owned by decks ────────────────────────
-sudo -u "$USER_NAME" mkdir -p \
-    "${USER_HOME}/app" \
-    "${USER_HOME}/app/app_data" \
-    "${USER_HOME}/.config/systemd/user" \
-    "${USER_HOME}/.ssh"
-
-chmod 700 "${USER_HOME}/.ssh"
-chown "$USER_NAME:$USER_NAME" "${USER_HOME}/.ssh"
-
-# authorized_keys created empty if absent; operator populates with the
-# GHA deploy public key (do NOT paste it here — keep keys out of the repo).
-if [ ! -f "${USER_HOME}/.ssh/authorized_keys" ]; then
-    sudo -u "$USER_NAME" touch "${USER_HOME}/.ssh/authorized_keys"
-    chmod 600 "${USER_HOME}/.ssh/authorized_keys"
+    # Install the second cloudflared LaunchDaemon. Owned by us — see the
+    # comment at the top of deploy/launchd/com.cloudflare.cloudflared-tools.plist
+    # for why we don't call `cloudflared service install`.
+    CF_PLIST_SRC="deploy/launchd/com.cloudflare.cloudflared-tools.plist"
+    CF_PLIST_DST="/Library/LaunchDaemons/com.cloudflare.cloudflared-tools.plist"
+    if [[ ! -f "$CF_PLIST_DST" ]] || ! sudo cmp -s "$CF_PLIST_SRC" "$CF_PLIST_DST"; then
+        sudo install -m 0644 -o root -g wheel "$CF_PLIST_SRC" "$CF_PLIST_DST"
+        sudo launchctl bootout system/com.cloudflare.cloudflared-tools 2>/dev/null || true
+        sudo launchctl bootstrap system "$CF_PLIST_DST"
+        echo "  cloudflared-tools LaunchDaemon installed (changed)"
+    else
+        echo "  cloudflared-tools LaunchDaemon unchanged"
+    fi
 fi
 
 echo
-echo "Bootstrap complete. Next steps:"
-echo "  1. Paste the GHA deploy pubkey into ${USER_HOME}/.ssh/authorized_keys"
-echo "  2. Append deploy/Caddyfile.snippet to /etc/caddy/Caddyfile,"
-echo "     then run: sudo systemctl reload caddy"
-echo "  3. Ask Oliver to add DNS A record: decks.koban.dev -> 142.93.44.235"
-echo "  4. First GHA deploy will rsync the repo and install the systemd unit"
+echo "Bootstrap complete. Remaining manual steps:"
+echo
+echo "  1. Confirm the cloudflared-tools tunnel is connected:"
+echo "       cloudflared tunnel info decks-studio   # expect ≥2 connector sessions"
+echo "       sudo launchctl print system/com.cloudflare.cloudflared-tools | head"
+echo
+echo "  2. Confirm caddy is serving decks.koho.tools (Host-header echo):"
+echo "       curl -sf -H 'Host: decks.koho.tools' http://127.0.0.1:8080/api/v1/health"
+echo "     (expect 502 until the first GHA deploy brings up the docker stack)"
+echo
+echo "  3. Reboot lifecycle: OrbStack only auto-starts when 'decks' has an"
+echo "     active GUI session. For unattended reboot recovery, enable"
+echo "     auto-login as decks in System Settings → Users & Groups, OR"
+echo "     swap OrbStack for Colima as a follow-up (not done in this bootstrap)."

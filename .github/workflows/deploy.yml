@@ -11,13 +11,17 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy to decks.koho.ai
+    name: Build and deploy to decks.koho.tools
     runs-on: ubuntu-latest
     environment: production
     env:
-      VPS_HOST: koho-dev
-      VPS_USER: decks
-      DEPLOY_DIR: /home/decks/app
+      # Hard-coded tailnet IP for the Mac Studio. CI runners don't honour
+      # MagicDNS / *.ts.net even with --accept-dns=true on `tailscale up`,
+      # so we resolve via IP. Update if the Studio is ever removed and
+      # re-added to the tailnet.
+      STUDIO_HOST: 100.71.141.110
+      STUDIO_USER: decks
+      DEPLOY_DIR: /Users/decks/app
     steps:
       - uses: actions/checkout@v4
 
@@ -56,6 +60,7 @@ jobs:
           oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
+          args: --accept-dns=true
 
       - name: Configure SSH
         env:
@@ -69,9 +74,9 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Sync repo to VPS
+      - name: Sync repo to Studio
         run: |
-          # rsync the build context the VPS needs to `docker compose build`.
+          # rsync the build context the Studio needs to `docker compose build`.
           # Exclude anything that isn't source, plus host-side state dirs
           # that must survive deploys.
           rsync -az --delete \
@@ -83,20 +88,11 @@ jobs:
             --exclude='data' \
             --exclude='servers/nextjs/node_modules' \
             --exclude='servers/nextjs/.next' \
-            ./ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/"
+            ./ "${STUDIO_USER}@${STUDIO_HOST}:${DEPLOY_DIR}/"
           # .env is gitignored so rsync doesn't carry it — scp separately.
-          scp .env "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/.env"
-          ssh "${VPS_USER}@${VPS_HOST}" "chmod +x ${DEPLOY_DIR}/deploy/deploy.sh"
+          scp .env "${STUDIO_USER}@${STUDIO_HOST}:${DEPLOY_DIR}/.env"
+          ssh "${STUDIO_USER}@${STUDIO_HOST}" "chmod +x ${DEPLOY_DIR}/deploy/deploy.sh"
 
-      - name: Install/refresh systemd unit
+      - name: Run deploy.sh on Studio
         run: |
-          ssh "${VPS_USER}@${VPS_HOST}" "
-            mkdir -p ~/.config/systemd/user &&
-            cp ${DEPLOY_DIR}/deploy/decks.service ~/.config/systemd/user/ &&
-            systemctl --user daemon-reload &&
-            systemctl --user enable decks
-          "
-
-      - name: Run deploy.sh on VPS
-        run: |
-          ssh "${VPS_USER}@${VPS_HOST}" "bash ${DEPLOY_DIR}/deploy/deploy.sh deploy"
+          ssh "${STUDIO_USER}@${STUDIO_HOST}" "bash ${DEPLOY_DIR}/deploy/deploy.sh deploy"
