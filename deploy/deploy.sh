@@ -34,7 +34,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
 export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
 DEPLOY_DIR="${HOME}/app"
-COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+# Compose v2 is shipped as the standalone `docker-compose` binary in brew
+# (and OrbStack's leftover install at /usr/local/bin/docker-compose) rather
+# than as a `docker compose` plugin — the brew docker formula doesn't bundle
+# the plugin. Both forms are functionally equivalent for our usage.
+COMPOSE="docker-compose -f docker-compose.yml -f docker-compose.prod.yml"
 
 HEALTH_URL="http://localhost:8094/api/v1/health"
 HEALTH_RETRIES=20
