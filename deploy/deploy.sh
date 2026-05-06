@@ -20,6 +20,12 @@
 
 set -euo pipefail
 
+# Non-interactive SSH shells don't source ~/.zprofile, so PATH is a bare
+# /usr/bin:/bin and OrbStack's docker (/usr/local/bin/docker) is missing.
+# Prepend the macOS-relevant bin dirs explicitly so the script is
+# independent of caller shell init.
+export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
+
 DEPLOY_DIR="${HOME}/app"
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 
