@@ -21,10 +21,17 @@
 set -euo pipefail
 
 # Non-interactive SSH shells don't source ~/.zprofile, so PATH is a bare
-# /usr/bin:/bin and OrbStack's docker (/usr/local/bin/docker) is missing.
-# Prepend the macOS-relevant bin dirs explicitly so the script is
-# independent of caller shell init.
+# /usr/bin:/bin and brew-installed binaries are off-path. Prepend the
+# macOS-relevant bin dirs so the script is independent of caller shell init.
 export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
+
+# Point docker at colima's socket. Colima runs under user `decks` and
+# exposes the docker daemon at $HOME/.colima/default/docker.sock; without
+# this, docker falls through to /var/run/docker.sock (which doesn't exist
+# on macOS unless Docker Desktop is installed) and fails with "permission
+# denied". Setting it explicitly here is more robust than relying on a
+# `docker context` configuration that future you might forget about.
+export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
 DEPLOY_DIR="${HOME}/app"
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
