@@ -13,13 +13,17 @@
 #
 # Pre-reqs handled OUT-OF-BAND (not by this script):
 #   - `decks` user created (done by koban's deploy/bootstrap-users.sh).
-#   - OrbStack installed (in koban's deploy/Brewfile).
 #   - Caddy + cloudflared (#1, koban-side) installed and running by koban's
 #     deploy/host-setup.sh. This script just adds decks-side fragments.
 #   - Cloudflare Tunnel `decks-studio` created from a CF-authenticated
 #     workstation in the **koho.tools** account; credentials JSON copied to:
 #       /Library/Application Support/com.cloudflare.cloudflared-tools/<id>.json
 #     (root:wheel 0600). KOHO_TOOLS_TUNNEL_ID exported in this shell.
+#
+# Container runtime: this script installs colima (via brew bundle) and a
+# system LaunchDaemon that runs `colima start --foreground` as user `decks`.
+# That keeps the docker socket available without any GUI session, which is
+# what we need for headless deploys via SSH from GHA.
 
 set -euo pipefail
 
@@ -36,17 +40,18 @@ BREW_PREFIX="/opt/homebrew"
 CADDY_ETC="${BREW_PREFIX}/etc"
 CLOUDFLARED_TOOLS_DIR="/Library/Application Support/com.cloudflare.cloudflared-tools"
 
+# Brew is installed in /opt/homebrew on Apple Silicon but the non-login
+# shell that runs this script (e.g. via SSH from a workstation) doesn't
+# necessarily have it on PATH. Source shellenv so `brew bundle` and the
+# tools we install are reachable.
+if [[ -x "${BREW_PREFIX}/bin/brew" ]]; then
+    eval "$("${BREW_PREFIX}/bin/brew" shellenv)"
+fi
+
 # --- Preflight: decks user must exist ---------------------------------------
 if ! id "$DECKS_USER" >/dev/null 2>&1; then
     echo "Error: user '$DECKS_USER' does not exist on this host." >&2
     echo "Run koban's deploy/bootstrap-users.sh first." >&2
-    exit 1
-fi
-
-# --- Preflight: OrbStack must be installed ----------------------------------
-if [[ ! -d /Applications/OrbStack.app ]]; then
-    echo "Error: OrbStack not installed. Run koban's deploy/host-setup.sh first" >&2
-    echo "(deploy/Brewfile includes the orbstack cask)." >&2
     exit 1
 fi
 
@@ -56,7 +61,15 @@ if ! command -v "${BREW_PREFIX}/bin/caddy" >/dev/null 2>&1; then
     exit 1
 fi
 
-# --- Step 1: Caddy decks vhost fragment -------------------------------------
+# --- Step 1: brew bundle (colima + docker CLI + compose) -------------------
+echo ">>> brew bundle --file deploy/Brewfile"
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Error: Homebrew not on PATH. Install from https://brew.sh and re-run." >&2
+    exit 1
+fi
+brew bundle --file deploy/Brewfile
+
+# --- Step 2: Caddy decks vhost fragment -------------------------------------
 echo ">>> ${CADDY_ETC}/conf.d/decks.caddy"
 DECKS_CADDY_SRC="deploy/conf.d/decks.caddy"
 DECKS_CADDY_DST="${CADDY_ETC}/conf.d/decks.caddy"
@@ -74,7 +87,20 @@ else
     echo "  unchanged"
 fi
 
-# --- Step 2: cloudflared-tools (second tunnel for koho.tools) ---------------
+# --- Step 3: Colima LaunchDaemon (headless docker for `decks`) --------------
+echo ">>> dev.koho.colima LaunchDaemon"
+COLIMA_PLIST_SRC="deploy/launchd/dev.koho.colima.plist"
+COLIMA_PLIST_DST="/Library/LaunchDaemons/dev.koho.colima.plist"
+if [[ ! -f "$COLIMA_PLIST_DST" ]] || ! sudo cmp -s "$COLIMA_PLIST_SRC" "$COLIMA_PLIST_DST"; then
+    sudo install -m 0644 -o root -g wheel "$COLIMA_PLIST_SRC" "$COLIMA_PLIST_DST"
+    sudo launchctl bootout system/dev.koho.colima 2>/dev/null || true
+    sudo launchctl bootstrap system "$COLIMA_PLIST_DST"
+    echo "  installed (changed) — colima starting in background (first boot pulls a Lima VM, ~1 min)"
+else
+    echo "  unchanged"
+fi
+
+# --- Step 4: cloudflared-tools (second tunnel for koho.tools) ---------------
 echo ">>> cloudflared-tools tunnel config (koho.tools account)"
 if [[ -z "${KOHO_TOOLS_TUNNEL_ID:-}" ]]; then
     echo "  KOHO_TOOLS_TUNNEL_ID not set — skipping cloudflared-tools install."
@@ -113,17 +139,17 @@ else
 fi
 
 echo
-echo "Bootstrap complete. Remaining manual steps:"
+echo "Bootstrap complete. Verify before the first GHA deploy:"
 echo
-echo "  1. Confirm the cloudflared-tools tunnel is connected:"
-echo "       cloudflared tunnel info decks-studio   # expect ≥2 connector sessions"
+echo "  1. Colima up and reachable as decks:"
+echo "       sudo launchctl print system/dev.koho.colima | grep state"
+echo "       sudo -iu decks docker version | head"
+echo "     (first boot pulls a Lima VM, ~1 min — be patient on the first call)"
+echo
+echo "  2. Cloudflared-tools tunnel connected:"
+echo "       cloudflared --origincert ~/.cloudflared/cert.koho.tools.pem tunnel info decks-studio"
 echo "       sudo launchctl print system/com.cloudflare.cloudflared-tools | head"
 echo
-echo "  2. Confirm caddy is serving decks.koho.tools (Host-header echo):"
+echo "  3. Caddy serving decks.koho.tools (Host-header echo):"
 echo "       curl -sf -H 'Host: decks.koho.tools' http://127.0.0.1:8080/api/v1/health"
 echo "     (expect 502 until the first GHA deploy brings up the docker stack)"
-echo
-echo "  3. Reboot lifecycle: OrbStack only auto-starts when 'decks' has an"
-echo "     active GUI session. For unattended reboot recovery, enable"
-echo "     auto-login as decks in System Settings → Users & Groups, OR"
-echo "     swap OrbStack for Colima as a follow-up (not done in this bootstrap)."

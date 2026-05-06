@@ -1,0 +1,17 @@
+# Brewfile — host toolchain for the Mac Studio, decks side.
+#
+# Apply via: brew bundle --file deploy/Brewfile
+# Driven from deploy/bootstrap.sh (one-shot, idempotent).
+#
+# Notes on what's NOT here:
+#   - caddy, cloudflared: installed by koban's deploy/Brewfile. Decks
+#     piggy-backs on koban's Caddy and adds a second cloudflared instance
+#     via its own LaunchDaemon plist.
+#   - orbstack: previously listed (in koban's Brewfile) as the docker
+#     runtime, but its daemon is per-user-session and decks has no GUI.
+#     Replaced by colima which can run headless under a LaunchDaemon.
+
+# --- Container runtime (headless) ---
+brew "colima"          # Lima-VM-backed docker daemon, runs as a service
+brew "docker"          # CLI; talks to colima's socket via the default context
+brew "docker-compose"  # used directly by deploy.sh

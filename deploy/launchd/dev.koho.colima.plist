@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Colima LaunchDaemon — runs the docker-compatible daemon as user `decks`
+  on the Mac Studio. Headless: no GUI session required.
+  Decks's docker CLI reads the default context (~/.colima/default) and
+  finds the socket at /Users/decks/.colima/default/docker.sock.
+  KeepAlive=true ensures colima auto-restarts if it crashes.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.koho.colima</string>
+    <key>UserName</key>
+    <string>decks</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/decks</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/decks</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/colima</string>
+        <string>start</string>
+        <string>--foreground</string>
+        <string>--cpu</string>
+        <string>4</string>
+        <string>--memory</string>
+        <string>8</string>
+        <string>--disk</string>
+        <string>60</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Library/Logs/dev.koho.colima.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Library/Logs/dev.koho.colima.err.log</string>
+</dict>
+</plist>
