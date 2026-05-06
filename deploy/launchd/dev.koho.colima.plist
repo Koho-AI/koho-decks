@@ -33,6 +33,14 @@
         <string>8</string>
         <string>--disk</string>
         <string>60</string>
+        <!-- Explicit DNS — Lima's default DNS resolution on macOS routes
+             through ::1:53 which has no listener, so containers fail to
+             resolve docker.io etc. 1.1.1.1 + 8.8.8.8 are public resolvers
+             that don't depend on the host's DNS setup. -->
+        <string>--dns</string>
+        <string>1.1.1.1</string>
+        <string>--dns</string>
+        <string>8.8.8.8</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
